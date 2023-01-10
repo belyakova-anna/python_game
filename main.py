@@ -70,31 +70,116 @@ def load_image(name, colorkey=None):
 
 
 def start_screen(screen):
-    intro_text = ["Civil defense"]
+    font_start = pygame.font.Font('data/Undertale-Battle-Font.ttf', 50)
+
+    # Create a font file by passing font file
+    # and size of the font
+    text_play = font_start.render('play', True, (0, 0, 0))
+    text_start = font_start.render('Civil defense', True, (255, 255, 255))
+    textRect_play = text_start.get_rect()
+    textRect_start = text_start.get_rect()
+
     fon = pygame.transform.scale(load_image('fon1.jpeg'), (width, height))
     screen.blit(fon, (0, 0))
-    text_coord = 250
-    for line in intro_text:
-        string_rendered = my_font.render(line, 1, pygame.Color('black'))
-        intro_rect = string_rendered.get_rect()
-        text_coord += 10
-        intro_rect.top = text_coord
-        intro_rect.x = 10
-        text_coord += intro_rect.height
-        screen.blit(string_rendered, intro_rect)
+
+    textRect_start.center = (width // 2, height // 2)
+    textRect_play.center = (width // 2 + textRect_play[2] // 3 + 10, height // 4 * 3 + textRect_play[3] // 2)
+    screen.blit(text_start, textRect_start)
+    screen.blit(text_play, textRect_play)
+
+    UI(ui_start, 'for_text', width // 2 - 106, height // 4 * 3)
+    # screen.blit(string_rendered, intro_rect)
 
     while True:
         for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONUP:
+                pos = pygame.mouse.get_pos()
+                clicked_sprites = [el for el in ui_start if el.rect.collidepoint(pos)]
+                for el in clicked_sprites:
+                    if el.tile_type == 'for_text':
+                        return
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
+            # elif event.type == pygame.KEYDOWN or \
+              #      event.type == pygame.MOUSEBUTTONDOWN:
                 # terminate()
-                return  # начинаем игру
+               # return  # начинаем игру
+        ui_start.draw(screen)
+        screen.blit(text_play, textRect_play)
+        pygame.display.flip()
+
+def to_time_format(time):
+    time = [str(time // 60), str(time % 60)]
+    if len(str(time[0])) < 2:
+        time[0] = '0' + time[0]
+    if len(str(time[1])) < 2:
+        time[1] = '0' + time[1]
+    time = time[0] + ':' + time[1]
+    return time
+
+def died_screen(screen):
+    global home
+    font_died = pygame.font.Font('data/Undertale-Battle-Font.ttf', 50)
+
+    text_died = font_died.render('Игра завершена', True, (255, 255, 255))
+    textRect_died = text_died.get_rect()
+
+    font_died_little = pygame.font.Font('data/Undertale-Battle-Font.ttf', 50)
+
+    text_count_killed = font_died_little.render(str(hero.count_killed), True, (255, 255, 255))
+    textRect_count_killed = text_count_killed.get_rect()
+
+    text_count_money = font_died_little.render(str(hero.count_money), True, (255, 255, 255))
+    textRect_count_money = text_count_money.get_rect()
+
+    text_clock = font_died_little.render(to_time_format(pygame.time.get_ticks() // 1000 - time_start), True, (255, 255, 255))
+    textRect_clock = text_clock.get_rect()
+
+    fon = pygame.transform.scale(load_image('died_fon.png'), (width, height))
+    screen.blit(fon, (0, 0))
+
+
+
+    UI(ui_died_group, 'close', width - tile_width - 50, 50)
+    UI(ui_died_group, 'percent', width // 6, height // 3)
+    UI(ui_died_group, 'clock', (width // 8) * 1, height // 2)
+    UI(ui_died_group, 'moneta', (width // 8) * 3.5, height // 2)
+    UI(ui_died_group, 'count_dead', (width // 8) * 6, height // 2)
+    UI(ui_died_to_home, 'skip', (width // 2) - 126, height - 160)
+    textRect_count_killed.center = ((width // 8) * 6 + tile_width + 30, height // 2 + tile_height // 2)
+    textRect_count_money.center = ((width // 8) * 3.5 + tile_width + 30, height // 2 + tile_height // 2)
+    textRect_clock.center = ((width // 8) * 1 + tile_width + 90, height // 2 + tile_height // 2)
+    textRect_died.center = (width // 2, 70)
+    screen.blit(text_died, textRect_died)
+    screen.blit(text_count_killed, textRect_count_killed)
+    screen.blit(text_count_money, textRect_count_money)
+    screen.blit(text_clock, textRect_clock)
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONUP:
+                pos = pygame.mouse.get_pos()
+                clicked_sprites = [el for el in ui_died_group if el.rect.collidepoint(pos)]
+                for el in clicked_sprites:
+                    if el.tile_type == 'close':
+                        terminate()
+                clicked_sprites = [el for el in ui_died_to_home if el.rect.collidepoint(pos)]
+                for el in clicked_sprites:
+                    if el.tile_type == 'skip':
+                        home = 1
+                        return
+            if event.type == pygame.QUIT:
+                terminate()
+        screen.blit(text_count_killed, textRect_count_killed)
+        screen.blit(text_died, textRect_died)
+        screen.blit(text_count_money, textRect_count_money)
+        screen.blit(text_clock, textRect_clock)
+        ui_died_to_home.draw(screen)
+        ui_died_group.draw(screen)
         pygame.display.flip()
 
 
 def home_screen(screen):
+    global home
     fps = 60
     clock = pygame.time.Clock()
 
@@ -114,6 +199,7 @@ def home_screen(screen):
         hero_group.draw(screen)
         ui_home_group.draw(screen)
         if hero.cur_scene == 'level':
+            home = 0
             return
 
         for event in pygame.event.get():
@@ -159,14 +245,15 @@ def load_level(filename):
 
 
 class Box(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y):
+    def __init__(self, inside, pos_x, pos_y):
         super().__init__(level_sprites, box_group)
+        self.inside = inside
         self.image = tile_images['box']
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.need_to_open = 0
         self.opened = 0
-        self.weapon_is_taken = 0
+        self.is_taken = 0
 
         self.frames = [pygame.transform.scale(load_image('chest_empty_open_anim_f1.png'), (tile_width, tile_height)),
                        pygame.transform.scale(load_image('chest_empty_open_anim_f2.png'), (tile_width, tile_height))]
@@ -177,10 +264,33 @@ class Box(pygame.sprite.Sprite):
         if self.need_to_open and not self.opened:
             self.cur_frame = (self.cur_frame + 0.05) % len(self.frames)
             self.image = self.frames[int(self.cur_frame)]
-            if int(self.cur_frame) == 1:
+            if int(self.cur_frame) == 1 and self.inside == 'weapon':
                 self.opened = 1
                 self.need_to_open = 0
                 self.weapon = Weapon(choice(weapon), self.rect[0], self.rect[1])
+            elif int(self.cur_frame) == 1 and self.inside == 'potion_lifes':
+                self.opened = 1
+                self.need_to_open = 0
+                self.potion_lifes = PotionLifes(self.rect[0], self.rect[1])
+            elif int(self.cur_frame) == 1 and self.inside == 'potion_energy':
+                self.opened = 1
+                self.need_to_open = 0
+                self.potion_energy = PotionEnergy(self.rect[0], self.rect[1])
+
+
+class PotionLifes(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(level_sprites, weapon_group)
+        self.image = tile_images['potion_lifes']
+        self.rect = self.image.get_rect().move(
+            pos_x, pos_y)
+
+class PotionEnergy(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(level_sprites, weapon_group)
+        self.image = tile_images['potion_energy']
+        self.rect = self.image.get_rect().move(
+            pos_x, pos_y)
 
 
 class Weapon(pygame.sprite.Sprite):
@@ -265,18 +375,45 @@ class Orc(pygame.sprite.Sprite):
                                              self.rect[2],
                                              self.rect[3])
             if pygame.sprite.spritecollideany(self, hero_group):
-                if self.rect[0] <= hero.rect[0] and self.rect[1] <= hero.rect[1]:
-                    hero.move(tile_width // hero.v, tile_height // hero.v)
-                if self.rect[0] >= hero.rect[0] and self.rect[1] <= hero.rect[1]:
-                    hero.move(- tile_width // hero.v, tile_height // hero.v)
-                if self.rect[0] <= hero.rect[0] and self.rect[1] >= hero.rect[1]:
-                    hero.move(tile_width // hero.v, - tile_height // hero.v)
-                if self.rect[0] >= hero.rect[0] and self.rect[1] >= hero.rect[1]:
-                    hero.move(- tile_width // hero.v, - tile_height // hero.v)
+                save = hero.rect
+                if self.rect[0] >= hero.rect[0] and self.rect[1] == hero.rect[1]:
+                    hero.move(- tile_width / hero.v, 0)
+                elif self.rect[0] <= hero.rect[0] and self.rect[1] == hero.rect[1]:
+                    hero.move(tile_width / hero.v, 0)
+                elif self.rect[0] == hero.rect[0] and self.rect[1] >= hero.rect[1]:
+                    hero.move(0, - tile_height / hero.v)
+                elif self.rect[0] == hero.rect[0] and self.rect[1] <= hero.rect[1]:
+                    hero.move(0, tile_height / hero.v)
+                elif self.rect[0] <= hero.rect[0] and self.rect[1] <= hero.rect[1]:
+                    hero.move(tile_width / hero.v, tile_height / hero.v)
+                elif self.rect[0] >= hero.rect[0] and self.rect[1] <= hero.rect[1]:
+                    hero.move(- tile_width / hero.v, tile_height / hero.v)
+                elif self.rect[0] <= hero.rect[0] and self.rect[1] >= hero.rect[1]:
+                    hero.move(tile_width / hero.v, - tile_height / hero.v)
+                elif self.rect[0] >= hero.rect[0] and self.rect[1] >= hero.rect[1]:
+                    hero.move(- tile_width / hero.v, - tile_height / hero.v)
+
+                if self.rect[0] >= hero.rect[0] and not hero.all_right:
+                    hero.move(- tile_width / hero.v, 0)
+                if self.rect[0] <= hero.rect[0] and not hero.all_right:
+                    hero.move(tile_width / hero.v, 0)
+                if self.rect[1] >= hero.rect[1] and not hero.all_right:
+                    hero.move(0, - tile_height / hero.v)
+                if self.rect[1] <= hero.rect[1] and not hero.all_right:
+                    hero.move(0, tile_height / hero.v)
+                if self.rect[0] <= hero.rect[0] and self.rect[1] <= hero.rect[1] and not hero.all_right:
+                    hero.move(tile_width / hero.v, tile_height / hero.v)
+                if self.rect[0] >= hero.rect[0] and self.rect[1] <= hero.rect[1] and not hero.all_right:
+                    hero.move(- tile_width / hero.v, tile_height / hero.v)
+                if self.rect[0] <= hero.rect[0] and self.rect[1] >= hero.rect[1] and not hero.all_right:
+                    hero.move(tile_width / hero.v, - tile_height / hero.v)
+                if self.rect[0] >= hero.rect[0] and self.rect[1] >= hero.rect[1] and not hero.all_right:
+                    hero.move(- tile_width / hero.v, - tile_height / hero.v)
+
                 hero.count_lifes.count = hero.count_lifes.count - 1
                 if hero.count_lifes.count <= 0:
                     print('У тебя закончились жизни')
-                    terminate()
+                    died_screen(screen)
 
     def update(self):
         for el in fire_group:
@@ -287,6 +424,7 @@ class Orc(pygame.sprite.Sprite):
             need = self.tile_type + '_bw'
             self.image = tile_images[need]
             self.is_died = 1
+            hero.count_killed = hero.count_killed + 1
 
 
 class UI_counter(pygame.sprite.Sprite):
@@ -295,12 +433,14 @@ class UI_counter(pygame.sprite.Sprite):
         if tile_type == 'lifes':
             super().__init__(ui_group)
             self.count = count
+            self.maxi = count
             self.name = tile_type + str(self.count)
             self.image = tile_images[self.name]
             self.rect = self.image.get_rect().move(x, y)
         elif tile_type == 'energy':
             super().__init__(ui_group)
             self.count = count
+            self.maxi = count
             self.name = tile_type + str((self.count - 1) // 20 + 1)
             self.image = tile_images[self.name]
             self.rect = self.image.get_rect().move(x, y)
@@ -335,6 +475,10 @@ class Hero(pygame.sprite.Sprite):
         self.count_lifes = UI_counter('lifes', 5, tile_width, tile_height)
         self.count_energy = UI_counter('energy', 100, tile_width, tile_height * 2)
         self.has_gun = 0
+        self.level = 0
+        self.all_right = 1
+        self.count_killed = 0
+        self.count_money = 0
 
     def got_gun(self, type_gun):
         pict = 'elf_' + type_gun + '.png'
@@ -349,14 +493,24 @@ class Hero(pygame.sprite.Sprite):
                     abs(hero.rect[1] - el.rect[1]) <= tile_height) and not el.opened:
                 el.need_to_open = 1
             elif (abs(hero.rect[0] - el.rect[0]) <= tile_width) and (
-                    abs(hero.rect[1] - el.rect[1]) <= tile_height) and el.opened:
-                el.weapon_is_taken = 1
+                    abs(hero.rect[1] - el.rect[1]) <= tile_height) and el.opened and el.inside == 'weapon':
+                el.is_taken = 1
                 el.weapon.image = pygame.transform.scale(load_image('None.png'), (tile_width, tile_height))
                 hero.got_gun(el.weapon.type_gun)
+            elif (abs(hero.rect[0] - el.rect[0]) <= tile_width) and (
+                    abs(hero.rect[1] - el.rect[1]) <= tile_height) and el.opened and not el.is_taken and el.inside == 'potion_lifes':
+                el.is_taken = 1
+                el.potion_lifes.image = pygame.transform.scale(load_image('None.png'), (tile_width, tile_height))
+                hero.count_lifes.count = hero.count_lifes.maxi
+            elif (abs(hero.rect[0] - el.rect[0]) <= tile_width) and (
+                    abs(hero.rect[1] - el.rect[1]) <= tile_height) and el.opened and not el.is_taken and el.inside == 'potion_energy':
+                el.is_taken = 1
+                el.potion_energy.image = pygame.transform.scale(load_image('None.png'), (tile_width, tile_height))
+                hero.count_energy.count = hero.count_energy.maxi
 
     def move(self, dx, dy):
         if self.cur_scene == 'home':
-            all_right = 1
+            self.all_right = 1
             for el in home_sprites:
                 el.rect = pygame.rect.Rect(el.rect[0] - dx * self.v, el.rect[1] - dy * self.v,
                                            el.rect[2],
@@ -368,35 +522,36 @@ class Hero(pygame.sprite.Sprite):
                     or pygame.sprite.spritecollideany(self, wall_home_group)
                     or pygame.sprite.spritecollideany(self, guitar_group)
                     or pygame.sprite.spritecollideany(self, dino_group)):
-                all_right = 0
+                self.all_right = 0
                 for el in home_sprites:
                     el.rect = pygame.rect.Rect(el.rect[0] + dx * self.v, el.rect[1] + dy * self.v,
                                                el.rect[2],
                                                el.rect[3])
-            if dx == -1 and self.rotation == 'right' and all_right:
+            if dx == -1 and self.rotation == 'right' and self.all_right:
                 self.image = pygame.transform.flip(self.image, True, False)
                 self.rotation = 'left'
-            elif dx == 1 and self.rotation == 'left' and all_right:
+            elif dx == 1 and self.rotation == 'left' and self.all_right:
                 self.image = pygame.transform.flip(self.image, True, False)
                 self.rotation = 'right'
         if self.cur_scene == 'level':
-            all_right = 1
+            self.all_right = 1
             for el in level_sprites:
+                # print(dx * self.v)
                 el.rect = pygame.rect.Rect(el.rect[0] - dx * self.v, el.rect[1] - dy * self.v,
                                            el.rect[2],
                                            el.rect[3])
             if (pygame.sprite.spritecollideany(
                     self, box_group) or pygame.sprite.spritecollideany(self, empty_group)
                     or pygame.sprite.spritecollideany(self, wall_group)):
-                all_right = 0
+                self.all_right = 0
                 for el in level_sprites:
                     el.rect = pygame.rect.Rect(el.rect[0] + dx * self.v, el.rect[1] + dy * self.v,
                                                el.rect[2],
                                                el.rect[3])
-            if dx == -1 and self.rotation == 'right' and all_right:
+            if dx == -1 and self.rotation == 'right' and self.all_right:
                 self.image = pygame.transform.flip(self.image, True, False)
                 self.rotation = 'left'
-            elif dx == 1 and self.rotation == 'left' and all_right:
+            elif dx == 1 and self.rotation == 'left' and self.all_right:
                 self.image = pygame.transform.flip(self.image, True, False)
                 self.rotation = 'right'
             if pygame.sprite.spritecollideany(self, portal_group):
@@ -404,6 +559,7 @@ class Hero(pygame.sprite.Sprite):
 
     def shoot(self):
         if hero.count_energy.count > 0:
+            pygame.mixer.Channel(1).play(pygame.mixer.Sound('data/shoot.mp3'))
             Fire(self.rect[0], self.rect[1])
             hero.count_energy.count = hero.count_energy.count - 1
 
@@ -439,6 +595,8 @@ class Fire(pygame.sprite.Sprite):
 
 
 def loading():
+    global level_changed
+
     start_ticks = pygame.time.get_ticks()  # starter tick
 
     font_loading = pygame.font.Font('data/Undertale-Battle-Font.ttf', 50)
@@ -458,7 +616,9 @@ def loading():
         # где то здесь пропишешь выход из loading и начало след уровня
         pygame.display.flip()
         if seconds > 5:  # if more than 10 seconds close the game
-            terminate()
+            hero.level = hero.level + 1
+            level_changed = 1
+            return
 
 
 '''class Enemy(pygame.sprite.Sprite):
@@ -470,27 +630,10 @@ def loading():
             tile_width * pos_x, tile_height * pos_y - (tile_height / 7 * 4))
 '''
 
-
 class UI(pygame.sprite.Sprite):
-    def __init__(self, tile_type, x, y):
+    def __init__(self, group, tile_type, x, y):
         self.tile_type = tile_type
-        if tile_type == 'close':
-            super().__init__(ui_group)
-        elif tile_type == 'p':
-            super().__init__(ui_group)
-        elif tile_type == 'pkm':
-            super().__init__(ui_group)
-        self.image = tile_images[tile_type]
-        self.rect = self.image.get_rect().move(x, y)
-
-
-class UI_home(pygame.sprite.Sprite):
-    def __init__(self, tile_type, x, y):
-        self.tile_type = tile_type
-        if tile_type == 'close_home':
-            super().__init__(ui_home_group)
-        elif tile_type == 'coin_fon':
-            super().__init__(ui_home_group)
+        super().__init__(group)
         self.image = tile_images[tile_type]
         self.rect = self.image.get_rect().move(x, y)
 
@@ -545,9 +688,15 @@ def generate_level(level):
                 Tile('floor', x + dx, y + dy)
                 AnimatedSprite(['14', '24', '34', '44'], (x + dx) * tile_width, (y + dy) * tile_height, tile_width,
                                tile_height, 0.05, level_sprites, portal_group)
-            elif level[y][x] == 'b':
+            elif level[y][x] == 'bw':
                 Tile('floor_fon', x + dx, y + dy)
-                Box(x + dx, y + dy)
+                Box('weapon', x + dx, y + dy)
+            elif level[y][x] == 'bl':
+                Tile('floor_fon', x + dx, y + dy)
+                Box('potion_lifes', x + dx, y + dy)
+            elif level[y][x] == 'be':
+                Tile('floor_fon', x + dx, y + dy)
+                Box('potion_energy', x + dx, y + dy)
             elif level[y][x] == 'or':
                 Tile('floor', x + dx, y + dy)
                 Orc('orc', x + dx, y + dy)
@@ -630,12 +779,12 @@ if __name__ in '__main__':
     pygame.init()
     my_font = pygame.font.Font('data/Undertale-Battle-Font.ttf', 50)
 
+    pygame.mixer.Channel(0).play(pygame.mixer.Sound('data/fon_music.mp3'), -1)
+
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     # screen = pygame.display.set_mode((500, 500))
     size = screen.get_size()
     width, height = size
-
-    start_screen(screen)
 
     tile_width = tile_height = 60
     tile_images = {
@@ -748,7 +897,20 @@ if __name__ in '__main__':
         'coin_fon': pygame.transform.scale(load_image('coin_fon.png'), (144, 56)),
         'close_home': pygame.transform.scale(load_image('close.png'), (tile_width, tile_height)),
         'fire': pygame.transform.scale(load_image('shot.png'), (tile_width // 2, tile_height // 2)),
+        'potion_lifes': pygame.transform.scale(load_image('flask_big_red.png'), (tile_width, tile_height)),
+        'potion_energy': pygame.transform.scale(load_image('flask_big_blue.png'), (tile_width, tile_height)),
+        'for_text': pygame.transform.scale(load_image('for_text.png'), (212, 64)),
+        'clock': pygame.transform.scale(load_image('clock.png'), (tile_width, tile_height)),
+        'moneta': pygame.transform.scale(load_image('moneta.png'), (tile_width, tile_height)),
+        'percent': pygame.transform.scale(load_image('percent.png'), (width // 3 * 2, height // 12)),
+        'count_dead': pygame.transform.scale(load_image('count_dead.png'), (tile_width, tile_height)),
+        'skip': pygame.transform.scale(load_image('skip.png'), (252, 80)),
     }
+
+    ui_start = pygame.sprite.Group()
+    start_screen(screen)
+
+
 
     home_sprites = pygame.sprite.Group()
     wall_home_group = pygame.sprite.Group()
@@ -759,6 +921,9 @@ if __name__ in '__main__':
     guitar_group = pygame.sprite.Group()
     empty_group = pygame.sprite.Group()
     ui_home_group = pygame.sprite.Group()
+
+    ui_died_group = pygame.sprite.Group()
+    ui_died_to_home = pygame.sprite.Group()
 
     level_sprites = pygame.sprite.Group()
     hero_group = pygame.sprite.Group()
@@ -781,82 +946,131 @@ if __name__ in '__main__':
     home_map = [el.split() for el in home_map]
     hero, necromancer, dino = generate_home(home_map)
     hero.cur_scene = 'home'
-    close_home = UI_home('close_home', width - tile_width - 50, 50)
-    money = UI_home('coin_fon', tile_width, tile_height)
+    close_home = UI(ui_home_group, 'close_home', width - tile_width - 50, 50)
+    money = UI(ui_home_group, 'coin_fon', tile_width, tile_height)
     home_screen(screen)
 
-    filename = 'level1.txt'
+    filenames = ['level1.txt', 'level2.txt', 'level3.txt']
+    filename = filenames[hero.level]
     level_map = load_level(filename)
     level_map = [el.split() for el in level_map]
     hero.cur_scene = 'level'
     generate_level(level_map)
+    time_start = pygame.time.get_ticks() // 1000
 
-    button_pkm = UI('pkm', tile_width, height - tile_height * 2)
-    button_p = UI('p', 2 * tile_width + 10, height - tile_height * 2)
-    close = UI('close', width - tile_width - 50, 50)
+
+    button_pkm = UI(ui_group, 'pkm', tile_width, height - tile_height * 2)
+    button_p = UI(ui_group, 'p', 2 * tile_width + 10, height - tile_height * 2)
+    close = UI(ui_group, 'close', width - tile_width - 50, 50)
 
     running = True
     fps = 60
     clock = pygame.time.Clock()
+    level_changed = 0
+    home = 0
     while running:
-        clock.tick(fps)
-        screen.fill(pygame.Color('black'))
+        if home:
+            home_sprites = pygame.sprite.Group()
+            wall_home_group = pygame.sprite.Group()
+            floor_home_group = pygame.sprite.Group()
+            exit_group = pygame.sprite.Group()
+            necromancer_group = pygame.sprite.Group()
+            dino_group = pygame.sprite.Group()
+            guitar_group = pygame.sprite.Group()
+            empty_group = pygame.sprite.Group()
+            ui_home_group = pygame.sprite.Group()
 
-        for el in monsters_group:
-            if (abs(el.rect[0] - hero.rect[0]) <= (tile_width * 5)) and (
-                    abs(el.rect[1] - hero.rect[1]) <= (tile_width * 5)):
-                if el.rect[0] < hero.rect[0] and el.rect[1] < hero.rect[1]:
-                    el.move(1, 1)
-                elif el.rect[0] > hero.rect[0] and el.rect[1] > hero.rect[1]:
-                    el.move(-1, -1)
-                elif el.rect[0] < hero.rect[0] and el.rect[1] > hero.rect[1]:
-                    el.move(1, -1)
-                elif el.rect[0] > hero.rect[0] and el.rect[1] < hero.rect[1]:
-                    el.move(-1, 1)
+            hero_group = pygame.sprite.Group()
 
-                elif el.rect[0] == hero.rect[0] and el.rect[1] > hero.rect[1]:
-                    el.move(0, -1)
-                elif el.rect[0] == hero.rect[0] and el.rect[1] < hero.rect[1]:
-                    el.move(0, 1)
-                elif el.rect[0] < hero.rect[0] and el.rect[1] == hero.rect[1]:
-                    el.move(1, 0)
-                elif el.rect[0] > hero.rect[0] and el.rect[1] == hero.rect[1]:
-                    el.move(-1, 0)
+            filename = 'home.txt'
+            home_map = load_level(filename)
+            home_map = [el.split() for el in home_map]
+            hero, necromancer, dino = generate_home(home_map)
+            hero.cur_scene = 'home'
+            close_home = UI(ui_home_group, 'close_home', width - tile_width - 50, 50)
+            money = UI(ui_home_group, 'coin_fon', tile_width, tile_height)
+            home_screen(screen)
+        else:
+            if level_changed:
+                hero.count_killed = 0
+                level_sprites = pygame.sprite.Group()
+                # hero_group = pygame.sprite.Group()
+                floor_group = pygame.sprite.Group()
+                wall_group = pygame.sprite.Group()
+                ui_group = pygame.sprite.Group()
+                portal_group = pygame.sprite.Group()
+                box_group = pygame.sprite.Group()
+                weapon_group = pygame.sprite.Group()
+                monsters_group = pygame.sprite.Group()
+                fire_group = pygame.sprite.Group()
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                terminate()
-            if event.type == pygame.MOUSEBUTTONUP:
-                pos = pygame.mouse.get_pos()
-                clicked_sprites = [el for el in ui_group if el.rect.collidepoint(pos)]
-                for el in clicked_sprites:
-                    if el.tile_type == 'close':
-                        terminate()
-                if hero.has_gun:
-                    hero.shoot()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_p:
-                    hero.action()
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-            hero.move(-1, 0)
-        elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-            hero.move(1, 0)
-        elif keys[pygame.K_UP] or keys[pygame.K_w]:
-            hero.move(0, -1)
-        elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
-            hero.move(0, 1)
+                filename = filenames[hero.level]
+                level_map = load_level(filename)
+                level_map = [el.split() for el in level_map]
+                hero.cur_scene = 'level'
+                generate_level(level_map)
+                button_pkm = UI(ui_group, 'pkm', tile_width, height - tile_height * 2)
+                button_p = UI(ui_group, 'p', 2 * tile_width + 10, height - tile_height * 2)
+                close = UI(ui_group, 'close', width - tile_width - 50, 50)
+                level_changed = 0
+            clock.tick(fps)
+            screen.fill(pygame.Color('black'))
 
-        level_sprites.update()
-        level_sprites.draw(screen)
-        monsters_group.draw(screen)
-        hero_group.draw(screen)
-        ui_group.draw(screen)
+            for el in monsters_group:
+                if (abs(el.rect[0] - hero.rect[0]) <= (tile_width * 5)) and (
+                        abs(el.rect[1] - hero.rect[1]) <= (tile_width * 5)):
+                    if el.rect[0] < hero.rect[0] and el.rect[1] < hero.rect[1]:
+                        el.move(1, 1)
+                    elif el.rect[0] > hero.rect[0] and el.rect[1] > hero.rect[1]:
+                        el.move(-1, -1)
+                    elif el.rect[0] < hero.rect[0] and el.rect[1] > hero.rect[1]:
+                        el.move(1, -1)
+                    elif el.rect[0] > hero.rect[0] and el.rect[1] < hero.rect[1]:
+                        el.move(-1, 1)
 
-        hero.count_lifes.update()
-        hero.count_energy.update()
+                    elif el.rect[0] == hero.rect[0] and el.rect[1] > hero.rect[1]:
+                        el.move(0, -1)
+                    elif el.rect[0] == hero.rect[0] and el.rect[1] < hero.rect[1]:
+                        el.move(0, 1)
+                    elif el.rect[0] < hero.rect[0] and el.rect[1] == hero.rect[1]:
+                        el.move(1, 0)
+                    elif el.rect[0] > hero.rect[0] and el.rect[1] == hero.rect[1]:
+                        el.move(-1, 0)
 
-        fire_group.update()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    terminate()
+                if event.type == pygame.MOUSEBUTTONUP:
+                    pos = pygame.mouse.get_pos()
+                    clicked_sprites = [el for el in ui_group if el.rect.collidepoint(pos)]
+                    for el in clicked_sprites:
+                        if el.tile_type == 'close':
+                            terminate()
+                    if hero.has_gun:
+                        hero.shoot()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_p:
+                        hero.action()
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+                hero.move(-1, 0)
+            elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+                hero.move(1, 0)
+            elif keys[pygame.K_UP] or keys[pygame.K_w]:
+                hero.move(0, -1)
+            elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
+                hero.move(0, 1)
+
+            level_sprites.update()
+            level_sprites.draw(screen)
+            monsters_group.draw(screen)
+            hero_group.draw(screen)
+            ui_group.draw(screen)
+
+            hero.count_lifes.update()
+            hero.count_energy.update()
+
+            fire_group.update()
 
         pygame.display.flip()
     terminate()
