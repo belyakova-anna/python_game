@@ -1,5 +1,4 @@
-import random
-
+import sqlite3
 import pygame
 import sys
 import os
@@ -119,6 +118,10 @@ def to_time_format(time):
 
 def died_screen(screen):
     global home
+    cur.execute("""DELETE from constants""")
+    cur.execute("""INSERT INTO constants (coins) VALUES(?)""", (hero.count_money,))
+    db.commit()
+
     font_died = pygame.font.Font('data/Undertale-Battle-Font.ttf', 50)
 
     text_died = font_died.render('Игра завершена', True, (255, 255, 255))
@@ -129,7 +132,7 @@ def died_screen(screen):
     text_count_killed = font_died_little.render(str(hero.count_killed), True, (255, 255, 255))
     textRect_count_killed = text_count_killed.get_rect()
 
-    text_count_money = font_died_little.render(str(hero.count_money), True, (255, 255, 255))
+    text_count_money = font_died_little.render(str(hero.count_money_from_level), True, (255, 255, 255))
     textRect_count_money = text_count_money.get_rect()
 
     text_clock = font_died_little.render(to_time_format(pygame.time.get_ticks() // 1000 - time_start), True, (255, 255, 255))
@@ -143,7 +146,7 @@ def died_screen(screen):
     UI(ui_died_group, 'close', width - tile_width - 50, 50)
     UI(ui_died_group, 'percent', width // 6, height // 3)
     UI(ui_died_group, 'clock', (width // 8) * 1, height // 2)
-    UI(ui_died_group, 'moneta', (width // 8) * 3.5, height // 2)
+    UI(ui_died_group, 'moneta_screen', (width // 8) * 3.5, height // 2)
     UI(ui_died_group, 'count_dead', (width // 8) * 6, height // 2)
     UI(ui_died_to_home, 'skip', (width // 2) - 126, height - 160)
     textRect_count_killed.center = ((width // 8) * 6 + tile_width + 30, height // 2 + tile_height // 2)
@@ -179,7 +182,7 @@ def died_screen(screen):
 
 
 def home_screen(screen):
-    global home
+    global home, hero
     fps = 60
     clock = pygame.time.Clock()
 
@@ -192,18 +195,24 @@ def home_screen(screen):
 
     text_dino = font1.render('Дино', True, (255, 255, 255))
     textRect_dino = text_dino.get_rect()
+
+    font2 = pygame.font.Font('data/Undertale-Battle-Font.ttf', 40)
+
+    text_money = font2.render(str(hero.count_money), True, (0, 0, 0))
+    textRect_money = text_money.get_rect()
+    textRect_money.center = (tile_width * 2.5, tile_height * 1.5)
     while True:
         clock.tick(fps)
         screen.fill(pygame.Color('black'))
         home_sprites.draw(screen)
         hero_group.draw(screen)
+        # print(hero.rect)
         ui_home_group.draw(screen)
         if hero.cur_scene == 'level':
             home = 0
             return
 
         for event in pygame.event.get():
-
             if event.type == pygame.QUIT:
                 terminate()
             if event.type == pygame.MOUSEBUTTONUP:
@@ -212,6 +221,15 @@ def home_screen(screen):
                 for el in home_clicked_sprites:
                     if el.tile_type == 'close_home':
                         terminate()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p:
+                    for el in skins_group:
+                        if (abs(hero.rect[0] - el.rect[0]) <= tile_width) and (
+                                abs(hero.rect[1] - el.rect[1]) <= tile_height):
+                            print('Смена скина')
+                            save = [hero.rect[0], hero.rect[1]]
+                            hero.kill()
+                            hero = Hero(el.tile_type, save[0] / tile_width, save[1] / tile_height)
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             hero.move(-1, 0)
@@ -230,6 +248,7 @@ def home_screen(screen):
                 abs(hero.rect[1] - dino.rect[1]) <= tile_height):
             textRect_dino.center = (dino.rect[0] + text_dino.get_rect()[2] - 10, dino.rect[1])
             screen.blit(text_dino, textRect_dino)
+        screen.blit(text_money, textRect_money)
         pygame.display.flip()
 
 
@@ -325,9 +344,9 @@ class Tile(pygame.sprite.Sprite):
         elif tile_type == "floor":
             super().__init__(level_sprites, floor_group)
         elif tile_type == "empty_home":
-            super().__init__(home_sprites, empty_group)
+            super().__init__(home_sprites, empty_home_group)
         elif tile_type == "empty_level":
-            super().__init__(level_sprites, empty_group)
+            super().__init__(level_sprites, empty_level_group)
         elif tile_type == "dino":
             super().__init__(level_sprites, dino_group)
         # im = tile_images[tile_type]
@@ -338,7 +357,8 @@ class Tile(pygame.sprite.Sprite):
 
 class Necromancer(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
-        super().__init__(home_sprites, necromancer_group)
+        super().__init__(home_sprites, necromancer_group, skins_group)
+        self.tile_type = 'necromancer'
         self.image = tile_images['necromancer']
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
@@ -346,7 +366,8 @@ class Necromancer(pygame.sprite.Sprite):
 
 class Dino(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
-        super().__init__(home_sprites, necromancer_group)
+        super().__init__(home_sprites, dino_group, skins_group)
+        self.tile_type = 'dino'
         self.image = tile_images['dino']
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
@@ -420,11 +441,38 @@ class Orc(pygame.sprite.Sprite):
             if self.rect.colliderect(el.rect):
                 self.lifes = self.lifes - 1
                 el.kill()
-        if self.lifes == 0:
-            need = self.tile_type + '_bw'
-            self.image = tile_images[need]
-            self.is_died = 1
-            hero.count_killed = hero.count_killed + 1
+        if self.lifes == 0 and not self.is_died:
+            self.die()
+
+    def die(self):
+        need = self.tile_type + '_bw'
+        self.image = tile_images[need]
+        self.is_died = 1
+        hero.count_killed = hero.count_killed + 1
+
+        Coin(self.rect[0], self.rect[1])
+        Coin(self.rect[0], self.rect[1])
+        Coin(self.rect[0], self.rect[1])
+
+
+class Coin(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(level_sprites, coin_group)
+        self.x = x
+        self.y = y
+        self.image = tile_images['moneta']
+        self.rect = self.image.get_rect().move(randint(x, x + 3 * tile_width), randint(y, y + 3 * tile_height))
+
+    def update(self):
+        if (pygame.sprite.spritecollideany(self, wall_group) or pygame.sprite.spritecollideany(self, box_group)
+                or pygame.sprite.spritecollideany(self, portal_group) or pygame.sprite.spritecollideany(self, empty_level_group)):
+            self.rect = self.image.get_rect().move(randint(self.x, self.x + 3 * tile_width),
+                                                   randint(self.y, self.y + 3 * tile_height))
+        if pygame.sprite.spritecollideany(self, hero_group):
+            pygame.mixer.Channel(2).play(pygame.mixer.Sound('data/coin.mp3'))
+            self.kill()
+            hero.count_money = hero.count_money + 1
+            hero.count_money_from_level = hero.count_money_from_level + 1
 
 
 class UI_counter(pygame.sprite.Sprite):
@@ -464,8 +512,7 @@ class UI_counter(pygame.sprite.Sprite):
 
 class Hero(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
-        if tile_type == 'elf':
-            super().__init__(hero_group)
+        super().__init__(hero_group)
         self.image = tile_images[tile_type]
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
@@ -478,10 +525,13 @@ class Hero(pygame.sprite.Sprite):
         self.level = 0
         self.all_right = 1
         self.count_killed = 0
-        self.count_money = 0
+        self.count_money = cur.execute("""SELECT coins FROM constants""").fetchall()[0][0]
+        self.cur_scene = 'home'
+        self.count_money_from_level = 0
+        self.tile_type = tile_type
 
     def got_gun(self, type_gun):
-        pict = 'elf_' + type_gun + '.png'
+        pict = self.tile_type + '_' + type_gun + '.png'
         hero.image = pygame.transform.scale(load_image(pict), (tile_width, tile_height))
         if hero.rotation == 'left':
             hero.image = pygame.transform.flip(self.image, True, False)
@@ -518,7 +568,7 @@ class Hero(pygame.sprite.Sprite):
             if pygame.sprite.spritecollideany(self, exit_group):
                 self.cur_scene = 'level'
             if (pygame.sprite.spritecollideany(self, necromancer_group)
-                    or pygame.sprite.spritecollideany(self, empty_group)
+                    or pygame.sprite.spritecollideany(self, empty_home_group)
                     or pygame.sprite.spritecollideany(self, wall_home_group)
                     or pygame.sprite.spritecollideany(self, guitar_group)
                     or pygame.sprite.spritecollideany(self, dino_group)):
@@ -541,7 +591,7 @@ class Hero(pygame.sprite.Sprite):
                                            el.rect[2],
                                            el.rect[3])
             if (pygame.sprite.spritecollideany(
-                    self, box_group) or pygame.sprite.spritecollideany(self, empty_group)
+                    self, box_group) or pygame.sprite.spritecollideany(self, empty_level_group)
                     or pygame.sprite.spritecollideany(self, wall_group)):
                 self.all_right = 0
                 for el in level_sprites:
@@ -592,6 +642,8 @@ class Fire(pygame.sprite.Sprite):
                                      self.rect[1] + self.v_fire * self.to_where[1],
                                      self.rect[2],
                                      self.rect[3])
+        if (abs(self.rect[0] - hero.rect[0]) > (tile_width * 5)) or (abs(self.rect[1] - hero.rect[1]) > (tile_height * 5)):
+            self.kill()
 
 
 def loading():
@@ -776,301 +828,313 @@ def generate_home(level):
 
 
 if __name__ in '__main__':
-    pygame.init()
-    my_font = pygame.font.Font('data/Undertale-Battle-Font.ttf', 50)
+    with sqlite3.connect('data/database.db') as db:
+        cur = db.cursor()
 
-    pygame.mixer.Channel(0).play(pygame.mixer.Sound('data/fon_music.mp3'), -1)
+        pygame.init()
+        my_font = pygame.font.Font('data/Undertale-Battle-Font.ttf', 50)
 
-    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-    # screen = pygame.display.set_mode((500, 500))
-    size = screen.get_size()
-    width, height = size
+        pygame.mixer.Channel(0).play(pygame.mixer.Sound('data/fon_music.mp3'), -1) # не удалять, фоновый звук
 
-    tile_width = tile_height = 60
-    tile_images = {
-        'floor': pygame.transform.scale(load_image('floor_1.png'), (tile_width, tile_height)),
-        'floor_fon': pygame.transform.scale(load_image('floor_1.png'), (tile_width, tile_height)),
-        'wall_left': pygame.transform.scale(load_image('wall_left.png'), (tile_width, tile_height)),
-        'wall_right': pygame.transform.scale(load_image('wall_right.png'), (tile_width, tile_height)),
-        'side_left': pygame.transform.scale(load_image('wall_side_mid_left.png'), (tile_width, tile_height)),
-        'side_right': pygame.transform.scale(load_image('wall_side_mid_right.png'), (tile_width, tile_height)),
-        'down_left': pygame.transform.scale(load_image('down_left.png'), (tile_width, tile_height)),
-        'down_right': pygame.transform.scale(load_image('down_right.png'), (tile_width, tile_height)),
-        'empty_home': pygame.transform.scale(load_image('black.png'), (tile_width, tile_height)),
-        'empty_level': pygame.transform.scale(load_image('black.png'), (tile_width, tile_height)),
-        'close': pygame.transform.scale(load_image('close.png'), (tile_width, tile_height)),
-        'p': pygame.transform.scale(load_image('p.png'), (tile_width, tile_height)),
-        'pkm': pygame.transform.scale(load_image('ПКМ.png'), (tile_width, tile_height)),
-        'elf': pygame.transform.scale(load_image('elf_square.png'),
-                                      (tile_width, tile_height)),
-        'wall_home': pygame.transform.scale(load_image('wall.png'), (tile_width, tile_height)),
-        'floor_home': pygame.transform.scale(load_image('floor_home.png'), (tile_width, tile_height)),
-        'floor_home_fon': pygame.transform.scale(load_image('floor_home.png'), (tile_width, tile_height)),
-        'exit_left': pygame.transform.scale(load_image('exit_left.png'), (tile_width, tile_height)),
-        'exit_right': pygame.transform.scale(load_image('exit_right.png'), (tile_width, tile_height)),
-        'cover1': pygame.transform.scale(load_image('cover1.png'), (tile_width, tile_height)),
-        'cover2': pygame.transform.scale(load_image('cover2.png'), (tile_width, tile_height)),
-        'cover3': pygame.transform.scale(load_image('cover3.png'), (tile_width, tile_height)),
-        'cover4': pygame.transform.scale(load_image('cover4.png'), (tile_width, tile_height)),
-        'cover5': pygame.transform.scale(load_image('cover5.png'), (tile_width, tile_height)),
-        'cover6': pygame.transform.scale(load_image('cover6.png'), (tile_width, tile_height)),
-        'cover7': pygame.transform.scale(load_image('cover7.png'), (tile_width, tile_height)),
-        'cover8': pygame.transform.scale(load_image('cover8.png'), (tile_width, tile_height)),
-        'necromancer': pygame.transform.scale(load_image('necromancer_idle_anim_f1.png'), (tile_width, tile_height)),
-        'okult1': pygame.transform.scale(load_image('okult1.png'), (tile_width, tile_height)),
-        'okult2': pygame.transform.scale(load_image('okult2.png'), (tile_width, tile_height)),
-        'okult3': pygame.transform.scale(load_image('okult3.png'), (tile_width, tile_height)),
-        'okult4': pygame.transform.scale(load_image('okult4.png'), (tile_width, tile_height)),
-        'box': pygame.transform.scale(load_image('chest_empty_open_anim_f0.png'), (tile_width, tile_height)),
-        # '1black': pygame.transform.scale(load_image('1black.png'), (tile_width, tile_height)),
-        # '2black': pygame.transform.scale(load_image('2black.png'), (tile_width, tile_height)),
-        '3black': pygame.transform.scale(load_image('3black.png'), (tile_width, tile_height)),
-        # '4black': pygame.transform.scale(load_image('4black.png'), (tile_width, tile_height)),
-        # '5black': pygame.transform.scale(load_image('5black.png'), (tile_width, tile_height)),
-        # '6black': pygame.transform.scale(load_image('6black.png'), (tile_width, tile_height)),
-        '7black': pygame.transform.scale(load_image('7black.png'), (tile_width, tile_height)),
-        # '8black': pygame.transform.scale(load_image('8black.png'), (tile_width, tile_height)),
-        # '1gold': pygame.transform.scale(load_image('1gold.png'), (tile_width, tile_height)),
-        # '2gold': pygame.transform.scale(load_image('2gold.png'), (tile_width, tile_height)),
-        '3gold': pygame.transform.scale(load_image('3gold.png'), (tile_width, tile_height)),
-        # '4gold': pygame.transform.scale(load_image('4gold.png'), (tile_width, tile_height)),
-        # '5gold': pygame.transform.scale(load_image('5gold.png'), (tile_width, tile_height)),
-        # '6gold': pygame.transform.scale(load_image('6gold.png'), (tile_width, tile_height)),
-        '7gold': pygame.transform.scale(load_image('7gold.png'), (tile_width, tile_height)),
-        # '8gold': pygame.transform.scale(load_image('8gold.png'), (tile_width, tile_height)),
-        # '1blue': pygame.transform.scale(load_image('1blue.png'), (tile_width, tile_height)),
-        # '2blue': pygame.transform.scale(load_image('2blue.png'), (tile_width, tile_height)),
-        '3blue': pygame.transform.scale(load_image('3blue.png'), (tile_width, tile_height)),
-        # '4blue': pygame.transform.scale(load_image('4blue.png'), (tile_width, tile_height)),
-        # '5blue': pygame.transform.scale(load_image('5blue.png'), (tile_width, tile_height)),
-        # '6blue': pygame.transform.scale(load_image('6blue.png'), (tile_width, tile_height)),
-        '7blue': pygame.transform.scale(load_image('7blue.png'), (tile_width, tile_height)),
-        # '8blue': pygame.transform.scale(load_image('8blue.png'), (tile_width, tile_height)),
-        'cat1': pygame.transform.scale(load_image('frame_0_delay-0.12s.png'), (200, 200)),
-        'cat2': pygame.transform.scale(load_image('frame_1_delay-0.12s.png'), (200, 200)),
-        'cat3': pygame.transform.scale(load_image('frame_2_delay-0.12s.png'), (200, 200)),
-        'cat4': pygame.transform.scale(load_image('frame_3_delay-0.12s.png'), (200, 200)),
-        'cat5': pygame.transform.scale(load_image('frame_4_delay-0.12s.png'), (200, 200)),
-        'cat6': pygame.transform.scale(load_image('frame_5_delay-0.12s.png'), (200, 200)),
-        'cat7': pygame.transform.scale(load_image('frame_6_delay-0.12s.png'), (200, 200)),
-        'cat8': pygame.transform.scale(load_image('frame_7_delay-0.12s.png'), (200, 200)),
-        'cat9': pygame.transform.scale(load_image('frame_8_delay-0.12s.png'), (200, 200)),
-        '11': pygame.transform.scale(load_image('11.png'), (tile_width, tile_height)),
-        '21': pygame.transform.scale(load_image('21.png'), (tile_width, tile_height)),
-        '31': pygame.transform.scale(load_image('31.png'), (tile_width, tile_height)),
-        '41': pygame.transform.scale(load_image('41.png'), (tile_width, tile_height)),
+        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        # screen = pygame.display.set_mode((500, 500))
+        size = screen.get_size()
+        width, height = size
 
-        '12': pygame.transform.scale(load_image('12.png'), (tile_width, tile_height)),
-        '22': pygame.transform.scale(load_image('22.png'), (tile_width, tile_height)),
-        '32': pygame.transform.scale(load_image('32.png'), (tile_width, tile_height)),
-        '42': pygame.transform.scale(load_image('42.png'), (tile_width, tile_height)),
+        tile_width = tile_height = 60
+        tile_images = {
+            'floor': pygame.transform.scale(load_image('floor_1.png'), (tile_width, tile_height)),
+            'floor_fon': pygame.transform.scale(load_image('floor_1.png'), (tile_width, tile_height)),
+            'wall_left': pygame.transform.scale(load_image('wall_left.png'), (tile_width, tile_height)),
+            'wall_right': pygame.transform.scale(load_image('wall_right.png'), (tile_width, tile_height)),
+            'side_left': pygame.transform.scale(load_image('wall_side_mid_left.png'), (tile_width, tile_height)),
+            'side_right': pygame.transform.scale(load_image('wall_side_mid_right.png'), (tile_width, tile_height)),
+            'down_left': pygame.transform.scale(load_image('down_left.png'), (tile_width, tile_height)),
+            'down_right': pygame.transform.scale(load_image('down_right.png'), (tile_width, tile_height)),
+            'empty_home': pygame.transform.scale(load_image('black.png'), (tile_width, tile_height)),
+            'empty_level': pygame.transform.scale(load_image('black.png'), (tile_width, tile_height)),
+            'close': pygame.transform.scale(load_image('close.png'), (tile_width, tile_height)),
+            'p': pygame.transform.scale(load_image('p.png'), (tile_width, tile_height)),
+            'pkm': pygame.transform.scale(load_image('ПКМ.png'), (tile_width, tile_height)),
+            'elf': pygame.transform.scale(load_image('elf_square.png'),
+                                          (tile_width, tile_height)),
+            'wall_home': pygame.transform.scale(load_image('wall.png'), (tile_width, tile_height)),
+            'floor_home': pygame.transform.scale(load_image('floor_home.png'), (tile_width, tile_height)),
+            'floor_home_fon': pygame.transform.scale(load_image('floor_home.png'), (tile_width, tile_height)),
+            'exit_left': pygame.transform.scale(load_image('exit_left.png'), (tile_width, tile_height)),
+            'exit_right': pygame.transform.scale(load_image('exit_right.png'), (tile_width, tile_height)),
+            'cover1': pygame.transform.scale(load_image('cover1.png'), (tile_width, tile_height)),
+            'cover2': pygame.transform.scale(load_image('cover2.png'), (tile_width, tile_height)),
+            'cover3': pygame.transform.scale(load_image('cover3.png'), (tile_width, tile_height)),
+            'cover4': pygame.transform.scale(load_image('cover4.png'), (tile_width, tile_height)),
+            'cover5': pygame.transform.scale(load_image('cover5.png'), (tile_width, tile_height)),
+            'cover6': pygame.transform.scale(load_image('cover6.png'), (tile_width, tile_height)),
+            'cover7': pygame.transform.scale(load_image('cover7.png'), (tile_width, tile_height)),
+            'cover8': pygame.transform.scale(load_image('cover8.png'), (tile_width, tile_height)),
+            'necromancer': pygame.transform.scale(load_image('necromancer_idle_anim_f1.png'), (tile_width, tile_height)),
+            'okult1': pygame.transform.scale(load_image('okult1.png'), (tile_width, tile_height)),
+            'okult2': pygame.transform.scale(load_image('okult2.png'), (tile_width, tile_height)),
+            'okult3': pygame.transform.scale(load_image('okult3.png'), (tile_width, tile_height)),
+            'okult4': pygame.transform.scale(load_image('okult4.png'), (tile_width, tile_height)),
+            'box': pygame.transform.scale(load_image('chest_empty_open_anim_f0.png'), (tile_width, tile_height)),
+            # '1black': pygame.transform.scale(load_image('1black.png'), (tile_width, tile_height)),
+            # '2black': pygame.transform.scale(load_image('2black.png'), (tile_width, tile_height)),
+            '3black': pygame.transform.scale(load_image('3black.png'), (tile_width, tile_height)),
+            # '4black': pygame.transform.scale(load_image('4black.png'), (tile_width, tile_height)),
+            # '5black': pygame.transform.scale(load_image('5black.png'), (tile_width, tile_height)),
+            # '6black': pygame.transform.scale(load_image('6black.png'), (tile_width, tile_height)),
+            '7black': pygame.transform.scale(load_image('7black.png'), (tile_width, tile_height)),
+            # '8black': pygame.transform.scale(load_image('8black.png'), (tile_width, tile_height)),
+            # '1gold': pygame.transform.scale(load_image('1gold.png'), (tile_width, tile_height)),
+            # '2gold': pygame.transform.scale(load_image('2gold.png'), (tile_width, tile_height)),
+            '3gold': pygame.transform.scale(load_image('3gold.png'), (tile_width, tile_height)),
+            # '4gold': pygame.transform.scale(load_image('4gold.png'), (tile_width, tile_height)),
+            # '5gold': pygame.transform.scale(load_image('5gold.png'), (tile_width, tile_height)),
+            # '6gold': pygame.transform.scale(load_image('6gold.png'), (tile_width, tile_height)),
+            '7gold': pygame.transform.scale(load_image('7gold.png'), (tile_width, tile_height)),
+            # '8gold': pygame.transform.scale(load_image('8gold.png'), (tile_width, tile_height)),
+            # '1blue': pygame.transform.scale(load_image('1blue.png'), (tile_width, tile_height)),
+            # '2blue': pygame.transform.scale(load_image('2blue.png'), (tile_width, tile_height)),
+            '3blue': pygame.transform.scale(load_image('3blue.png'), (tile_width, tile_height)),
+            # '4blue': pygame.transform.scale(load_image('4blue.png'), (tile_width, tile_height)),
+            # '5blue': pygame.transform.scale(load_image('5blue.png'), (tile_width, tile_height)),
+            # '6blue': pygame.transform.scale(load_image('6blue.png'), (tile_width, tile_height)),
+            '7blue': pygame.transform.scale(load_image('7blue.png'), (tile_width, tile_height)),
+            # '8blue': pygame.transform.scale(load_image('8blue.png'), (tile_width, tile_height)),
+            'cat1': pygame.transform.scale(load_image('frame_0_delay-0.12s.png'), (200, 200)),
+            'cat2': pygame.transform.scale(load_image('frame_1_delay-0.12s.png'), (200, 200)),
+            'cat3': pygame.transform.scale(load_image('frame_2_delay-0.12s.png'), (200, 200)),
+            'cat4': pygame.transform.scale(load_image('frame_3_delay-0.12s.png'), (200, 200)),
+            'cat5': pygame.transform.scale(load_image('frame_4_delay-0.12s.png'), (200, 200)),
+            'cat6': pygame.transform.scale(load_image('frame_5_delay-0.12s.png'), (200, 200)),
+            'cat7': pygame.transform.scale(load_image('frame_6_delay-0.12s.png'), (200, 200)),
+            'cat8': pygame.transform.scale(load_image('frame_7_delay-0.12s.png'), (200, 200)),
+            'cat9': pygame.transform.scale(load_image('frame_8_delay-0.12s.png'), (200, 200)),
+            '11': pygame.transform.scale(load_image('11.png'), (tile_width, tile_height)),
+            '21': pygame.transform.scale(load_image('21.png'), (tile_width, tile_height)),
+            '31': pygame.transform.scale(load_image('31.png'), (tile_width, tile_height)),
+            '41': pygame.transform.scale(load_image('41.png'), (tile_width, tile_height)),
 
-        '13': pygame.transform.scale(load_image('13.png'), (tile_width, tile_height)),
-        '23': pygame.transform.scale(load_image('23.png'), (tile_width, tile_height)),
-        '33': pygame.transform.scale(load_image('33.png'), (tile_width, tile_height)),
-        '43': pygame.transform.scale(load_image('43.png'), (tile_width, tile_height)),
+            '12': pygame.transform.scale(load_image('12.png'), (tile_width, tile_height)),
+            '22': pygame.transform.scale(load_image('22.png'), (tile_width, tile_height)),
+            '32': pygame.transform.scale(load_image('32.png'), (tile_width, tile_height)),
+            '42': pygame.transform.scale(load_image('42.png'), (tile_width, tile_height)),
 
-        '14': pygame.transform.scale(load_image('14.png'), (tile_width, tile_height)),
-        '24': pygame.transform.scale(load_image('24.png'), (tile_width, tile_height)),
-        '34': pygame.transform.scale(load_image('34.png'), (tile_width, tile_height)),
-        '44': pygame.transform.scale(load_image('44.png'), (tile_width, tile_height)),
+            '13': pygame.transform.scale(load_image('13.png'), (tile_width, tile_height)),
+            '23': pygame.transform.scale(load_image('23.png'), (tile_width, tile_height)),
+            '33': pygame.transform.scale(load_image('33.png'), (tile_width, tile_height)),
+            '43': pygame.transform.scale(load_image('43.png'), (tile_width, tile_height)),
 
-        'orc': pygame.transform.scale(load_image('orc_warrior_idle_anim_f0.png'), (tile_width, tile_height)),
-        'orc_bw': pygame.transform.scale(load_image('orc_warrior_idle_anim_f0_bw.png'), (tile_width, tile_height)),
-        'lifes0': pygame.transform.scale(load_image('lifes0.png'), (180, 48)),
-        'lifes1': pygame.transform.scale(load_image('lifes1.png'), (180, 48)),
-        'lifes2': pygame.transform.scale(load_image('lifes2.png'), (180, 48)),
-        'lifes3': pygame.transform.scale(load_image('lifes3.png'), (180, 48)),
-        'lifes4': pygame.transform.scale(load_image('lifes4.png'), (180, 48)),
-        'lifes5': pygame.transform.scale(load_image('lifes5.png'), (180, 48)),
-        'energy0': pygame.transform.scale(load_image('energy0.png'), (180, 48)),
-        'energy1': pygame.transform.scale(load_image('energy1.png'), (180, 48)),
-        'energy2': pygame.transform.scale(load_image('energy2.png'), (180, 48)),
-        'energy3': pygame.transform.scale(load_image('energy3.png'), (180, 48)),
-        'energy4': pygame.transform.scale(load_image('energy4.png'), (180, 48)),
-        'energy5': pygame.transform.scale(load_image('energy5.png'), (180, 48)),
-        'ui_fon': pygame.transform.scale(load_image('ui_fon1.png'), (186, 123)),
-        'guitar1': pygame.transform.scale(load_image('g1.png'), (tile_width, tile_height)),
-        'guitar2': pygame.transform.scale(load_image('g2.png'), (tile_width, tile_height)),
-        'guitar3': pygame.transform.scale(load_image('g3.png'), (tile_width, tile_height)),
-        'dino': pygame.transform.scale(load_image('lizard_m_idle_anim_f0.png'), (tile_width, tile_height)),
-        'coin_fon': pygame.transform.scale(load_image('coin_fon.png'), (144, 56)),
-        'close_home': pygame.transform.scale(load_image('close.png'), (tile_width, tile_height)),
-        'fire': pygame.transform.scale(load_image('shot.png'), (tile_width // 2, tile_height // 2)),
-        'potion_lifes': pygame.transform.scale(load_image('flask_big_red.png'), (tile_width, tile_height)),
-        'potion_energy': pygame.transform.scale(load_image('flask_big_blue.png'), (tile_width, tile_height)),
-        'for_text': pygame.transform.scale(load_image('for_text.png'), (212, 64)),
-        'clock': pygame.transform.scale(load_image('clock.png'), (tile_width, tile_height)),
-        'moneta': pygame.transform.scale(load_image('moneta.png'), (tile_width, tile_height)),
-        'percent': pygame.transform.scale(load_image('percent.png'), (width // 3 * 2, height // 12)),
-        'count_dead': pygame.transform.scale(load_image('count_dead.png'), (tile_width, tile_height)),
-        'skip': pygame.transform.scale(load_image('skip.png'), (252, 80)),
-    }
+            '14': pygame.transform.scale(load_image('14.png'), (tile_width, tile_height)),
+            '24': pygame.transform.scale(load_image('24.png'), (tile_width, tile_height)),
+            '34': pygame.transform.scale(load_image('34.png'), (tile_width, tile_height)),
+            '44': pygame.transform.scale(load_image('44.png'), (tile_width, tile_height)),
 
-    ui_start = pygame.sprite.Group()
-    start_screen(screen)
+            'orc': pygame.transform.scale(load_image('orc_warrior_idle_anim_f0.png'), (tile_width, tile_height)),
+            'orc_bw': pygame.transform.scale(load_image('orc_warrior_idle_anim_f0_bw.png'), (tile_width, tile_height)),
+            'lifes0': pygame.transform.scale(load_image('lifes0.png'), (180, 48)),
+            'lifes1': pygame.transform.scale(load_image('lifes1.png'), (180, 48)),
+            'lifes2': pygame.transform.scale(load_image('lifes2.png'), (180, 48)),
+            'lifes3': pygame.transform.scale(load_image('lifes3.png'), (180, 48)),
+            'lifes4': pygame.transform.scale(load_image('lifes4.png'), (180, 48)),
+            'lifes5': pygame.transform.scale(load_image('lifes5.png'), (180, 48)),
+            'energy0': pygame.transform.scale(load_image('energy0.png'), (180, 48)),
+            'energy1': pygame.transform.scale(load_image('energy1.png'), (180, 48)),
+            'energy2': pygame.transform.scale(load_image('energy2.png'), (180, 48)),
+            'energy3': pygame.transform.scale(load_image('energy3.png'), (180, 48)),
+            'energy4': pygame.transform.scale(load_image('energy4.png'), (180, 48)),
+            'energy5': pygame.transform.scale(load_image('energy5.png'), (180, 48)),
+            'ui_fon': pygame.transform.scale(load_image('ui_fon1.png'), (186, 123)),
+            'guitar1': pygame.transform.scale(load_image('g1.png'), (tile_width, tile_height)),
+            'guitar2': pygame.transform.scale(load_image('g2.png'), (tile_width, tile_height)),
+            'guitar3': pygame.transform.scale(load_image('g3.png'), (tile_width, tile_height)),
+            'dino': pygame.transform.scale(load_image('lizard_m_idle_anim_f0.png'), (tile_width, tile_height)),
+            'coin_fon': pygame.transform.scale(load_image('coin_fon.png'), (144, 56)),
+            'close_home': pygame.transform.scale(load_image('close.png'), (tile_width, tile_height)),
+            'fire': pygame.transform.scale(load_image('shot.png'), (tile_width // 2, tile_height // 2)),
+            'potion_lifes': pygame.transform.scale(load_image('flask_big_red.png'), (tile_width, tile_height)),
+            'potion_energy': pygame.transform.scale(load_image('flask_big_blue.png'), (tile_width, tile_height)),
+            'for_text': pygame.transform.scale(load_image('for_text.png'), (212, 64)),
+            'clock': pygame.transform.scale(load_image('clock.png'), (tile_width, tile_height)),
+            'moneta': pygame.transform.scale(load_image('moneta.png'), (tile_width // 2, tile_height // 2)),
+            'moneta_screen': pygame.transform.scale(load_image('moneta.png'), (tile_width, tile_height)),
+            'percent': pygame.transform.scale(load_image('percent.png'), (width // 3 * 2, height // 12)),
+            'count_dead': pygame.transform.scale(load_image('count_dead.png'), (tile_width, tile_height)),
+            'skip': pygame.transform.scale(load_image('skip.png'), (252, 80)),
+        }
 
-
-
-    home_sprites = pygame.sprite.Group()
-    wall_home_group = pygame.sprite.Group()
-    floor_home_group = pygame.sprite.Group()
-    exit_group = pygame.sprite.Group()
-    necromancer_group = pygame.sprite.Group()
-    dino_group = pygame.sprite.Group()
-    guitar_group = pygame.sprite.Group()
-    empty_group = pygame.sprite.Group()
-    ui_home_group = pygame.sprite.Group()
-
-    ui_died_group = pygame.sprite.Group()
-    ui_died_to_home = pygame.sprite.Group()
-
-    level_sprites = pygame.sprite.Group()
-    hero_group = pygame.sprite.Group()
-    floor_group = pygame.sprite.Group()
-    wall_group = pygame.sprite.Group()
-    ui_group = pygame.sprite.Group()
-    portal_group = pygame.sprite.Group()
-    box_group = pygame.sprite.Group()
-    weapon_group = pygame.sprite.Group()
-    monsters_group = pygame.sprite.Group()
-    fire_group = pygame.sprite.Group()
-
-    cat_loading_group = pygame.sprite.Group()
-
-    # '1black', '2black', '3black', '4black', '5black', '6black', '7black', '8black',
-    weapon = ['3gold', '3blue', '3black', '7gold', '7blue', '7black']
-
-    filename = 'home.txt'
-    home_map = load_level(filename)
-    home_map = [el.split() for el in home_map]
-    hero, necromancer, dino = generate_home(home_map)
-    hero.cur_scene = 'home'
-    close_home = UI(ui_home_group, 'close_home', width - tile_width - 50, 50)
-    money = UI(ui_home_group, 'coin_fon', tile_width, tile_height)
-    home_screen(screen)
-
-    filenames = ['level1.txt', 'level2.txt', 'level3.txt']
-    filename = filenames[hero.level]
-    level_map = load_level(filename)
-    level_map = [el.split() for el in level_map]
-    hero.cur_scene = 'level'
-    generate_level(level_map)
-    time_start = pygame.time.get_ticks() // 1000
+        ui_start = pygame.sprite.Group()
+        start_screen(screen)
 
 
-    button_pkm = UI(ui_group, 'pkm', tile_width, height - tile_height * 2)
-    button_p = UI(ui_group, 'p', 2 * tile_width + 10, height - tile_height * 2)
-    close = UI(ui_group, 'close', width - tile_width - 50, 50)
 
-    running = True
-    fps = 60
-    clock = pygame.time.Clock()
-    level_changed = 0
-    home = 0
-    while running:
-        if home:
-            home_sprites = pygame.sprite.Group()
-            wall_home_group = pygame.sprite.Group()
-            floor_home_group = pygame.sprite.Group()
-            exit_group = pygame.sprite.Group()
-            necromancer_group = pygame.sprite.Group()
-            dino_group = pygame.sprite.Group()
-            guitar_group = pygame.sprite.Group()
-            empty_group = pygame.sprite.Group()
-            ui_home_group = pygame.sprite.Group()
+        home_sprites = pygame.sprite.Group()
+        skins_group = pygame.sprite.Group()
+        wall_home_group = pygame.sprite.Group()
+        floor_home_group = pygame.sprite.Group()
+        exit_group = pygame.sprite.Group()
+        necromancer_group = pygame.sprite.Group()
+        dino_group = pygame.sprite.Group()
+        guitar_group = pygame.sprite.Group()
+        empty_home_group = pygame.sprite.Group()
+        ui_home_group = pygame.sprite.Group()
 
-            hero_group = pygame.sprite.Group()
+        ui_died_group = pygame.sprite.Group()
+        ui_died_to_home = pygame.sprite.Group()
 
-            filename = 'home.txt'
-            home_map = load_level(filename)
-            home_map = [el.split() for el in home_map]
-            hero, necromancer, dino = generate_home(home_map)
-            hero.cur_scene = 'home'
-            close_home = UI(ui_home_group, 'close_home', width - tile_width - 50, 50)
-            money = UI(ui_home_group, 'coin_fon', tile_width, tile_height)
-            home_screen(screen)
-        else:
-            if level_changed:
-                hero.count_killed = 0
-                level_sprites = pygame.sprite.Group()
-                # hero_group = pygame.sprite.Group()
-                floor_group = pygame.sprite.Group()
-                wall_group = pygame.sprite.Group()
-                ui_group = pygame.sprite.Group()
-                portal_group = pygame.sprite.Group()
-                box_group = pygame.sprite.Group()
-                weapon_group = pygame.sprite.Group()
-                monsters_group = pygame.sprite.Group()
-                fire_group = pygame.sprite.Group()
+        level_sprites = pygame.sprite.Group()
+        hero_group = pygame.sprite.Group()
+        floor_group = pygame.sprite.Group()
+        coin_group = pygame.sprite.Group()
+        wall_group = pygame.sprite.Group()
+        ui_group = pygame.sprite.Group()
+        portal_group = pygame.sprite.Group()
+        box_group = pygame.sprite.Group()
+        weapon_group = pygame.sprite.Group()
+        monsters_group = pygame.sprite.Group()
+        fire_group = pygame.sprite.Group()
+        empty_level_group = pygame.sprite.Group()
 
-                filename = filenames[hero.level]
-                level_map = load_level(filename)
-                level_map = [el.split() for el in level_map]
-                hero.cur_scene = 'level'
-                generate_level(level_map)
-                button_pkm = UI(ui_group, 'pkm', tile_width, height - tile_height * 2)
-                button_p = UI(ui_group, 'p', 2 * tile_width + 10, height - tile_height * 2)
-                close = UI(ui_group, 'close', width - tile_width - 50, 50)
-                level_changed = 0
-            clock.tick(fps)
-            screen.fill(pygame.Color('black'))
+        cat_loading_group = pygame.sprite.Group()
 
-            for el in monsters_group:
-                if (abs(el.rect[0] - hero.rect[0]) <= (tile_width * 5)) and (
-                        abs(el.rect[1] - hero.rect[1]) <= (tile_width * 5)):
-                    if el.rect[0] < hero.rect[0] and el.rect[1] < hero.rect[1]:
-                        el.move(1, 1)
-                    elif el.rect[0] > hero.rect[0] and el.rect[1] > hero.rect[1]:
-                        el.move(-1, -1)
-                    elif el.rect[0] < hero.rect[0] and el.rect[1] > hero.rect[1]:
-                        el.move(1, -1)
-                    elif el.rect[0] > hero.rect[0] and el.rect[1] < hero.rect[1]:
-                        el.move(-1, 1)
+        # '1black', '2black', '3black', '4black', '5black', '6black', '7black', '8black',
+        weapon = ['3gold', '3blue', '3black', '7gold', '7blue', '7black']
 
-                    elif el.rect[0] == hero.rect[0] and el.rect[1] > hero.rect[1]:
-                        el.move(0, -1)
-                    elif el.rect[0] == hero.rect[0] and el.rect[1] < hero.rect[1]:
-                        el.move(0, 1)
-                    elif el.rect[0] < hero.rect[0] and el.rect[1] == hero.rect[1]:
-                        el.move(1, 0)
-                    elif el.rect[0] > hero.rect[0] and el.rect[1] == hero.rect[1]:
-                        el.move(-1, 0)
+        filename = 'home.txt'
+        home_map = load_level(filename)
+        home_map = [el.split() for el in home_map]
+        hero, necromancer, dino = generate_home(home_map)
+        hero.cur_scene = 'home'
+        close_home = UI(ui_home_group, 'close_home', width - tile_width - 50, 50)
+        money = UI(ui_home_group, 'coin_fon', tile_width, tile_height)
+        home_screen(screen)
 
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    terminate()
-                if event.type == pygame.MOUSEBUTTONUP:
-                    pos = pygame.mouse.get_pos()
-                    clicked_sprites = [el for el in ui_group if el.rect.collidepoint(pos)]
-                    for el in clicked_sprites:
-                        if el.tile_type == 'close':
-                            terminate()
-                    if hero.has_gun:
-                        hero.shoot()
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_p:
-                        hero.action()
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-                hero.move(-1, 0)
-            elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-                hero.move(1, 0)
-            elif keys[pygame.K_UP] or keys[pygame.K_w]:
-                hero.move(0, -1)
-            elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
-                hero.move(0, 1)
+        filenames = ['level1.txt', 'level2.txt', 'level3.txt']
+        filename = filenames[hero.level]
+        level_map = load_level(filename)
+        level_map = [el.split() for el in level_map]
+        hero.cur_scene = 'level'
+        generate_level(level_map)
+        time_start = pygame.time.get_ticks() // 1000
 
-            level_sprites.update()
-            level_sprites.draw(screen)
-            monsters_group.draw(screen)
-            hero_group.draw(screen)
-            ui_group.draw(screen)
 
-            hero.count_lifes.update()
-            hero.count_energy.update()
+        button_pkm = UI(ui_group, 'pkm', tile_width, height - tile_height * 2)
+        button_p = UI(ui_group, 'p', 2 * tile_width + 10, height - tile_height * 2)
+        close = UI(ui_group, 'close', width - tile_width - 50, 50)
 
-            fire_group.update()
+        running = True
+        fps = 60
+        clock = pygame.time.Clock()
+        level_changed = 0
+        home = 0
+        while running:
+            if home:
+                home_sprites = pygame.sprite.Group()
+                wall_home_group = pygame.sprite.Group()
+                floor_home_group = pygame.sprite.Group()
+                exit_group = pygame.sprite.Group()
+                necromancer_group = pygame.sprite.Group()
+                dino_group = pygame.sprite.Group()
+                guitar_group = pygame.sprite.Group()
+                empty_home_group = pygame.sprite.Group()
+                ui_home_group = pygame.sprite.Group()
 
-        pygame.display.flip()
-    terminate()
+                hero_group = pygame.sprite.Group()
+
+                filename = 'home.txt'
+                home_map = load_level(filename)
+                home_map = [el.split() for el in home_map]
+                hero, necromancer, dino = generate_home(home_map)
+                hero.cur_scene = 'home'
+                close_home = UI(ui_home_group, 'close_home', width - tile_width - 50, 50)
+                money = UI(ui_home_group, 'coin_fon', tile_width, tile_height)
+                home_screen(screen)
+            else:
+                if level_changed:
+                    hero.count_money_from_level = 0
+                    hero.count_killed = 0
+                    level_sprites = pygame.sprite.Group()
+                    # hero_group = pygame.sprite.Group()
+                    floor_group = pygame.sprite.Group()
+                    wall_group = pygame.sprite.Group()
+                    ui_group = pygame.sprite.Group()
+                    portal_group = pygame.sprite.Group()
+                    box_group = pygame.sprite.Group()
+                    weapon_group = pygame.sprite.Group()
+                    monsters_group = pygame.sprite.Group()
+                    fire_group = pygame.sprite.Group()
+                    empty_level_group = pygame.sprite.Group()
+
+                    filename = filenames[hero.level]
+                    level_map = load_level(filename)
+                    level_map = [el.split() for el in level_map]
+                    hero.cur_scene = 'level'
+                    generate_level(level_map)
+                    button_pkm = UI(ui_group, 'pkm', tile_width, height - tile_height * 2)
+                    button_p = UI(ui_group, 'p', 2 * tile_width + 10, height - tile_height * 2)
+                    close = UI(ui_group, 'close', width - tile_width - 50, 50)
+                    level_changed = 0
+                clock.tick(fps)
+                screen.fill(pygame.Color('black'))
+
+                for el in monsters_group:
+                    if (abs(el.rect[0] - hero.rect[0]) <= (tile_width * 5)) and (
+                            abs(el.rect[1] - hero.rect[1]) <= (tile_width * 5)):
+                        if el.rect[0] < hero.rect[0] and el.rect[1] < hero.rect[1]:
+                            el.move(1, 1)
+                        elif el.rect[0] > hero.rect[0] and el.rect[1] > hero.rect[1]:
+                            el.move(-1, -1)
+                        elif el.rect[0] < hero.rect[0] and el.rect[1] > hero.rect[1]:
+                            el.move(1, -1)
+                        elif el.rect[0] > hero.rect[0] and el.rect[1] < hero.rect[1]:
+                            el.move(-1, 1)
+
+                        elif el.rect[0] == hero.rect[0] and el.rect[1] > hero.rect[1]:
+                            el.move(0, -1)
+                        elif el.rect[0] == hero.rect[0] and el.rect[1] < hero.rect[1]:
+                            el.move(0, 1)
+                        elif el.rect[0] < hero.rect[0] and el.rect[1] == hero.rect[1]:
+                            el.move(1, 0)
+                        elif el.rect[0] > hero.rect[0] and el.rect[1] == hero.rect[1]:
+                            el.move(-1, 0)
+
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        terminate()
+                    if event.type == pygame.MOUSEBUTTONUP:
+                        pos = pygame.mouse.get_pos()
+                        clicked_sprites = [el for el in ui_group if el.rect.collidepoint(pos)]
+                        for el in clicked_sprites:
+                            if el.tile_type == 'close':
+                                terminate()
+                        if hero.has_gun:
+                            hero.shoot()
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_p:
+                            hero.action()
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+                    hero.move(-1, 0)
+                elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+                    hero.move(1, 0)
+                elif keys[pygame.K_UP] or keys[pygame.K_w]:
+                    hero.move(0, -1)
+                elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
+                    hero.move(0, 1)
+
+                level_sprites.update()
+                level_sprites.draw(screen)
+                monsters_group.draw(screen)
+                coin_group.update()
+                coin_group.draw(screen)
+                hero_group.draw(screen)
+                ui_group.draw(screen)
+
+                hero.count_lifes.update()
+                hero.count_energy.update()
+
+                fire_group.update()
+
+            pygame.display.flip()
+        db.commit()
+        terminate()
