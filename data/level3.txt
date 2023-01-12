@@ -1,0 +1,29 @@
+e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e
+e  sl wr wl wr wl wr wl wr wl wr wl sr e  e  e  e  e  e  sl wl wr wl wr wl wr wl wr wl wr sr e  e  e  e  e  e  sl wl wr wl wr wl wr wl wr wl wr sr e  e  e  e
+e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e
+e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  or sr e  e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e
+e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e
+e  sl f  f  f  f  f  f  f  f  f  f  wr wl wr wl wr wl wr wl f  f  f  f  f  f  f  f  f  f  wr wl wr wl wr wl wr wl f  f  f  f  p1 p2 f  f  f  f  sr e  e  e  e
+e  sl f  f  f  f  bl f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  or f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  p4 p3 f  f  f  f  sr e  e  e  e
+e  sl f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  f  sr e  e  e  e
+e  sl f  f  f  f  f  f  f  f  f  f  wr wl wr wl wr wl wr wl f  f  f  f  f  f  f  f  f  f  wr wl wr wl wr wl wr wl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e
+e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e  sl f  f  f  f  f  f  or f  f  f  sr e  e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e
+e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e
+e  dl wr wl wr wl  f  f wr wl wr wl dr e  e  e  e  e  e  dl wr wl wr wl f  f  wr wl wr wl dr e  e  e  e  e  e  dl wr wl wr wl wr wl wr wl wr wl dr e  e  e  e
+e  e  e  e  e  sl  f  f sr e  e  e  e  e  e  e  e  e  e  e  e  e  e  sl f  f  sr e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e
+e  e  e  e  e  sl  f  f sr e  e  e  e  e  e  e  e  e  e  e  e  e  e  sl f  f  sr e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e
+e  e  e  e  e  sl  f  f sr e  e  e  e  e  e  e  e  e  e  e  e  e  e  sl f  f  sr e  e  e  e
+e  e  e  e  e  sl  f  f sr e  e  e  e  e  e  e  e  e  e  e  e  e  e  sl f  f  sr e  e  e  e
+e  e  e  e  e  sl  f  f sr e  e  e  e  e  e  e  e  e  e  e  e  e  e  sl f  f  sr e  e  e  e  e
+e  e  e  e  e  sl  f  f sr e  e  e  e  e  e  e  e  e  e  e  e  e  e  sl f  f  sr e  e  e  e  e  
+e  sl wr wl wr wl  f  f wr wl wr wl sr e  e  e  e  e  dl wl wr wl wr wl f  f  wr wl wr wl wr dr e  e  e  e  e  e 
+e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  sl f  f  or f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e 
+e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e 
+e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  or f  sr e  e  e  e  e  e 
+e  sl f  f  f  f  H  f  f  f  f  f  sr e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e 
+e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e 
+e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e 
+e  sl f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  sl f  f  f  f  f  f  f  f  f  f  f  f  sr e  e  e  e  e  e 
+e  dl wr wl wr wl wr wl wr wl wr wl dr e  e  e  e  e  dl wl wr wl wr wl wr wl wr wl wr wl wr dr e  e  e  e  e  e  
+e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e
+e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e  e
