@@ -11,7 +11,9 @@ def terminate():
 
 
 class AnimatedSprite(pygame.sprite.Sprite):  # анимация
-    def __init__(self, imgs, x, y, x_size, y_size, time, *group):
+    def __init__(self, imgs, x, y, x_size, y_size, time, *group):  # на вход названия картинок, по которым
+        # их можно найти в словаре tile_images, координаты, размер, время смены одной картинки из анимации,
+        # группы спрайтов, к которым относится объект
         super().__init__(*group)
         self.time = time
         self.frames = [tile_images[el] for el in imgs]
@@ -56,7 +58,7 @@ def start_screen(screen):  # начальный экран
             if event.type == pygame.MOUSEBUTTONUP:
                 pos = pygame.mouse.get_pos()
                 clicked_sprites = [el for el in ui_start if el.rect.collidepoint(pos)]
-                for el in clicked_sprites:
+                for el in clicked_sprites:  # если нажата кнопка play
                     if el.tile_type == 'for_text':
                         return
             if event.type == pygame.QUIT:
@@ -67,6 +69,7 @@ def start_screen(screen):  # начальный экран
 
 
 def to_time_format(time):  # вспомогательная функция
+    # принимает число, возвращает строку в формате мин:сек
     time = [str(time // 60), str(time % 60)]
     if len(str(time[0])) < 2:
         time[0] = '0' + time[0]
@@ -77,7 +80,11 @@ def to_time_format(time):  # вспомогательная функция
 
 
 def died_screen(screen):  # экран подсчёта достижений
-    global home, coin_group
+    global home, cat_died_group
+
+    for el in coin_group:
+        el.kill()
+    cat_died_group = pygame.sprite.Group()
 
     font_died = pygame.font.Font('data/Undertale-Battle-Font.ttf', 50)
 
@@ -86,12 +93,15 @@ def died_screen(screen):  # экран подсчёта достижений
 
     font_died_little = pygame.font.Font('data/Undertale-Battle-Font.ttf', 50)
 
+    # количество убитых монстров
     text_count_killed = font_died_little.render(str(hero.count_killed), True, (255, 255, 255))
     textRect_count_killed = text_count_killed.get_rect()
 
+    # количество собранных монет
     text_count_money = font_died_little.render(str(hero.count_money_from_level), True, (255, 255, 255))
     textRect_count_money = text_count_money.get_rect()
 
+    # время с начала игры
     text_clock = font_died_little.render(to_time_format(pygame.time.get_ticks() // 1000 - time_start), True,
                                          (255, 255, 255))
     textRect_clock = text_clock.get_rect()
@@ -100,48 +110,58 @@ def died_screen(screen):  # экран подсчёта достижений
     screen.blit(fon, (0, 0))
 
     UI(ui_died_group, 'close', width - tile_width - 50, 50)
-    UI(ui_died_group, 'clock', (width // 8) * 1, height // 2)
-    UI(ui_died_group, 'moneta_screen', (width // 8) * 3.5, height // 2)
-    UI(ui_died_group, 'count_dead', (width // 8) * 6, height // 2)
+    UI(ui_died_group, 'clock', (width // 8) * 1, height // 2 + 50)
+    UI(ui_died_group, 'moneta_screen', (width // 8) * 3.5, height // 2 + 50)
+    UI(ui_died_group, 'count_dead', (width // 8) * 6, height // 2 + 50)
     UI(ui_died_to_home, 'skip', (width // 2) - 126, height - 160)
-    textRect_count_killed.center = ((width // 8) * 6 + tile_width + 30, height // 2 + tile_height // 2)
-    textRect_count_money.center = ((width // 8) * 3.5 + tile_width + 30, height // 2 + tile_height // 2)
-    textRect_clock.center = ((width // 8) * 1 + tile_width + 90, height // 2 + tile_height // 2)
+    textRect_count_killed.center = ((width // 8) * 6 + tile_width + 30, height // 2 + tile_height // 2 + 50)
+    textRect_count_money.center = ((width // 8) * 3.5 + tile_width + 30, height // 2 + tile_height // 2 + 50)
+    textRect_clock.center = ((width // 8) * 1 + tile_width + 90, height // 2 + tile_height // 2 + 50)
     textRect_died.center = (width // 2, 70)
     screen.blit(text_died, textRect_died)
     screen.blit(text_count_killed, textRect_count_killed)
     screen.blit(text_count_money, textRect_count_money)
     screen.blit(text_clock, textRect_clock)
+
+    AnimatedSprite(['1orange', '2orange', '3orange', '4orange'], width // 2 - 120,
+                   height // 2 - 220, width // 2, width // 2, 0.045, cat_died_group)
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONUP:
                 pos = pygame.mouse.get_pos()
                 clicked_sprites = [el for el in ui_died_group if el.rect.collidepoint(pos)]
-                for el in clicked_sprites:
+                for el in clicked_sprites:  # нажать на крестик = закрыть игру
                     if el.tile_type == 'close':
                         terminate()
                 clicked_sprites = [el for el in ui_died_to_home if el.rect.collidepoint(pos)]
-                for el in clicked_sprites:
+                for el in clicked_sprites:  # нажать на кнопку = вернуться на домашний экран игры
                     if el.tile_type == 'skip':
                         hero.start_game = 1
                         home = 1
                         return
             if event.type == pygame.QUIT:
                 terminate()
+
+        screen.blit(fon, (0, 0))
+
         screen.blit(text_count_killed, textRect_count_killed)
         screen.blit(text_died, textRect_died)
         screen.blit(text_count_money, textRect_count_money)
         screen.blit(text_clock, textRect_clock)
         ui_died_to_home.draw(screen)
         ui_died_group.draw(screen)
+
+        cat_died_group.update()
+        cat_died_group.draw(screen)
         pygame.display.flip()
 
 
 def change_hero(el):  # смена скина
     global home, hero_type
-    with open('data/home.txt', 'r') as f:
+    with open('data/home.txt', 'r') as f:  # считываем файл
         a = f.read()
-    with open('data/home.txt', 'w') as f:
+    with open('data/home.txt', 'w') as f:  # изменяем содержимое файла
         if el.tile_type == 'necromancer' and hero.tile_type == 'elf':
             a = a.replace('N', 'E')
             f.write(a)
@@ -160,6 +180,25 @@ def change_hero(el):  # смена скина
         elif el.tile_type == 'elf' and hero.tile_type == 'dino':
             a = a.replace('E', 'D')
             f.write(a)
+
+        elif el.tile_type == 'elf' and hero.tile_type == 'knight':
+            a = a.replace('E', 'K')
+            f.write(a)
+        elif el.tile_type == 'knight' and hero.tile_type == 'elf':
+            a = a.replace('K', 'E')
+            f.write(a)
+        elif el.tile_type == 'necromancer' and hero.tile_type == 'knight':
+            a = a.replace('N', 'K')
+            f.write(a)
+        elif el.tile_type == 'knight' and hero.tile_type == 'necromancer':
+            a = a.replace('K', 'N')
+            f.write(a)
+        elif el.tile_type == 'dino' and hero.tile_type == 'knight':
+            a = a.replace('D', 'K')
+            f.write(a)
+        elif el.tile_type == 'knight' and hero.tile_type == 'dino':
+            a = a.replace('K', 'D')
+            f.write(a)
         else:
             f.write(a)
     hero_type = el.tile_type
@@ -173,27 +212,33 @@ def home_screen(screen):  # домашняя комната
 
     font1 = pygame.font.Font('data/Undertale-Battle-Font.ttf', 20)
 
-    text_necromancer = font1.render('Некромант', True, (255, 255, 255))
+    text_necromancer = font1.render('Некромант', True, (255, 255, 255))  # имя некроманта
     textRect_necromancer = text_necromancer.get_rect()
 
-    text_necromancer_buy = font1.render('купить 50', True, (255, 255, 255))
+    text_necromancer_buy = font1.render('купить 50', True, (255, 255, 255))  # цена скина некроманта
     textRect_necromancer_buy = text_necromancer_buy.get_rect()
 
-    text_dino = font1.render('Дино', True, (255, 255, 255))
+    text_dino = font1.render('Дино', True, (255, 255, 255))  # имя динозавтра
     textRect_dino = text_dino.get_rect()
 
-    text_dino_buy = font1.render('купить 50', True, (255, 255, 255))
+    text_dino_buy = font1.render('купить 50', True, (255, 255, 255))  # цена скина динозавра
     textRect_dino_buy = text_dino_buy.get_rect()
 
-    text_elf = font1.render('Эльф', True, (255, 255, 255))
+    text_elf = font1.render('Эльф', True, (255, 255, 255))  # имя эльфа
     textRect_elf = text_elf.get_rect()
 
-    text_elf_buy = font1.render('купить 50', True, (255, 255, 255))
+    text_elf_buy = font1.render('купить 50', True, (255, 255, 255))  # цена скина эльфа
     textRect_elf_buy = text_elf_buy.get_rect()
+
+    text_knight = font1.render('Рыцарь', True, (255, 255, 255))  # имя рыцаря
+    textRect_knight = text_elf.get_rect()
+
+    text_knight_buy = font1.render('купить 50', True, (255, 255, 255))  # цена скина рыцаря
+    textRect_knight_buy = text_elf_buy.get_rect()
 
     font2 = pygame.font.Font('data/Undertale-Battle-Font.ttf', 40)
 
-    text_money = font2.render(str(hero.count_money), True, (0, 0, 0))
+    text_money = font2.render(str(hero.count_money), True, (0, 0, 0))  # накопленные монеты
     textRect_money = text_money.get_rect()
     textRect_money.center = (tile_width * 2.5, tile_height * 1.5)
     while True:
@@ -213,10 +258,18 @@ def home_screen(screen):  # домашняя комната
                 home_pos = pygame.mouse.get_pos()
                 home_clicked_sprites = [el for el in ui_home_group if el.rect.collidepoint(home_pos)]
                 for el in home_clicked_sprites:
-                    if el.tile_type == 'close_home':
+                    if el.tile_type == 'close_home':  # нажат крестик = завершаем сеанс игры
                         terminate()
+                    if el.tile_type == 'is_sound':  # нажата кнопка изменения состояния звука
+                        el.play = (el.play + 1) % 2
+                        if el.play:
+                            el.image = tile_images['is_sound']
+                            pygame.mixer.Channel(0).unpause()
+                        else:
+                            el.image = tile_images['isnt_sound']
+                            pygame.mixer.Channel(0).pause()
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_p:
+                if event.key == pygame.K_p:  # нажата клавиша p для смены персонажа
                     for el in skins_group:
                         if (abs(hero.rect[0] - el.rect[0]) <= tile_width) and (
                                 abs(hero.rect[1] - el.rect[1]) <= tile_height) and (
@@ -234,26 +287,36 @@ def home_screen(screen):  # домашняя комната
                             if el.tile_type == 'elf':
                                 n = cur.execute("""SELECT necromancer FROM skins""").fetchall()[0][0]
                                 d = cur.execute("""SELECT dino FROM skins""").fetchall()[0][0]
+                                k = cur.execute("""SELECT knight FROM skins""").fetchall()[0][0]
                                 cur.execute("""DELETE from skins""")
-                                cur.execute("""INSERT INTO skins VALUES(?, ?, ?)""", (n, d, 1))
+                                cur.execute("""INSERT INTO skins VALUES(?, ?, ?, ?)""", (n, d, 1, k))
                                 db.commit()
                             elif el.tile_type == 'dino':
                                 n = cur.execute("""SELECT necromancer FROM skins""").fetchall()[0][0]
                                 e = cur.execute("""SELECT elf FROM skins""").fetchall()[0][0]
+                                k = cur.execute("""SELECT knight FROM skins""").fetchall()[0][0]
                                 cur.execute("""DELETE from skins""")
-                                cur.execute("""INSERT INTO skins VALUES(?, ?, ?)""", (n, 1, e))
+                                cur.execute("""INSERT INTO skins VALUES(?, ?, ?, ?)""", (n, 1, e, k))
                                 db.commit()
                             elif el.tile_type == 'necromancer':
                                 e = cur.execute("""SELECT elf FROM skins""").fetchall()[0][0]
                                 d = cur.execute("""SELECT dino FROM skins""").fetchall()[0][0]
+                                k = cur.execute("""SELECT knight FROM skins""").fetchall()[0][0]
                                 cur.execute("""DELETE from skins""")
-                                cur.execute("""INSERT INTO skins VALUES(?, ?, ?)""", (1, d, e))
+                                cur.execute("""INSERT INTO skins VALUES(?, ?, ?, ?)""", (1, d, e, k))
+                                db.commit()
+                            elif el.tile_type == 'knight':
+                                n = cur.execute("""SELECT necromancer FROM skins""").fetchall()[0][0]
+                                e = cur.execute("""SELECT elf FROM skins""").fetchall()[0][0]
+                                d = cur.execute("""SELECT dino FROM skins""").fetchall()[0][0]
+                                cur.execute("""DELETE from skins""")
+                                cur.execute("""INSERT INTO skins VALUES(?, ?, ?, ?)""", (n, d, e, 1))
                                 db.commit()
                             text_money = font2.render(str(hero.count_money), True, (0, 0, 0))
                             textRect_money = text_money.get_rect()
                             textRect_money.center = (tile_width * 2.5, tile_height * 1.5)
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:  # перемещение героя
             hero.move(-1, 0)
         elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             hero.move(1, 0)
@@ -261,6 +324,7 @@ def home_screen(screen):  # домашняя комната
             hero.move(0, -1)
         elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
             hero.move(0, 1)
+        # генерация текста при приближении к персонажу в домашней сцене
         if necromancer and (abs(hero.rect[0] - necromancer.rect[0]) <= tile_width) and (
                 abs(hero.rect[1] - necromancer.rect[1]) <= tile_height):
             if necromancer.available:
@@ -287,6 +351,14 @@ def home_screen(screen):  # домашняя комната
             else:
                 textRect_elf_buy.center = (elf.rect[0] + text_elf_buy.get_rect()[2] - 70, elf.rect[1])
                 screen.blit(text_elf_buy, textRect_elf_buy)
+        if knight and (abs(hero.rect[0] - knight.rect[0]) <= tile_width) and (
+                abs(hero.rect[1] - knight.rect[1]) <= tile_height):
+            if knight.available:
+                textRect_knight.center = (knight.rect[0] + text_knight.get_rect()[2] - 45, knight.rect[1])
+                screen.blit(text_knight, textRect_knight)
+            else:
+                textRect_knight_buy.center = (knight.rect[0] + text_knight_buy.get_rect()[2] - 70, knight.rect[1])
+                screen.blit(text_knight_buy, textRect_knight_buy)
         screen.blit(text_money, textRect_money)
         pygame.display.flip()
 
@@ -322,22 +394,22 @@ class Box(pygame.sprite.Sprite):  # ящик на игровой карте
         if self.need_to_open and not self.opened:
             self.cur_frame = (self.cur_frame + 0.05) % len(self.frames)
             self.image = self.frames[int(self.cur_frame)]
-            if int(self.cur_frame) == 1 and self.inside == 'weapon':
+            if int(self.cur_frame) == 1 and self.inside == 'weapon':  # генерируем оружие внутри ящика
                 self.opened = 1
                 self.need_to_open = 0
                 self.weapon = Weapon(choice(weapon), self.rect[0], self.rect[1])
-            elif int(self.cur_frame) == 1 and self.inside == 'potion_lifes':
+            elif int(self.cur_frame) == 1 and self.inside == 'potion_lifes':  # генерируем зелье жизни внутри ящика
                 self.opened = 1
                 self.need_to_open = 0
                 self.potion_lifes = PotionLifes(self.rect[0], self.rect[1])
-            elif int(self.cur_frame) == 1 and self.inside == 'potion_energy':
+            elif int(self.cur_frame) == 1 and self.inside == 'potion_energy':  # генерируем зелье энергии внутри ящика
                 self.opened = 1
                 self.need_to_open = 0
                 self.potion_energy = PotionEnergy(self.rect[0], self.rect[1])
 
 
 class PotionLifes(pygame.sprite.Sprite):  # зелье жизней внутри ящика
-    def __init__(self, pos_x, pos_y):
+    def __init__(self, pos_x, pos_y):  # на вход принимает координаты
         super().__init__(level_sprites, weapon_group)
         self.image = tile_images['potion_lifes']
         self.rect = self.image.get_rect().move(
@@ -345,7 +417,7 @@ class PotionLifes(pygame.sprite.Sprite):  # зелье жизней внутри
 
 
 class PotionEnergy(pygame.sprite.Sprite):  # зелье энергии внутри ящика
-    def __init__(self, pos_x, pos_y):
+    def __init__(self, pos_x, pos_y):  # на вход принимает координаты
         super().__init__(level_sprites, weapon_group)
         self.image = tile_images['potion_energy']
         self.rect = self.image.get_rect().move(
@@ -353,7 +425,7 @@ class PotionEnergy(pygame.sprite.Sprite):  # зелье энергии внут�
 
 
 class Weapon(pygame.sprite.Sprite):  # оружие внутри ящика
-    def __init__(self, tile_type, pos_x, pos_y):
+    def __init__(self, tile_type, pos_x, pos_y):  # на вход принимает название оружие из словаря и координаты
         super().__init__(level_sprites, weapon_group)
         self.type_gun = tile_type
         self.image = tile_images[tile_type]
@@ -424,8 +496,18 @@ class Elf(pygame.sprite.Sprite):  # персонаж в домашней ком�
             tile_width * pos_x, tile_height * pos_y)
 
 
-class Orc(pygame.sprite.Sprite):  # монстр
-    def __init__(self, tile_type, pos_x, pos_y):
+class Knight(pygame.sprite.Sprite):  # персонаж в домашней комнате
+    def __init__(self, pos_x, pos_y):
+        super().__init__(home_sprites, knight_group, skins_group)
+        self.available = cur.execute("""SELECT knight FROM skins""").fetchall()[0][0]
+        self.tile_type = 'knight'
+        self.image = tile_images['knight']
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x, tile_height * pos_y)
+
+
+class Monster(pygame.sprite.Sprite):  # монстр
+    def __init__(self, tile_type, pos_x, pos_y):  # название монстра и его координаты
         super().__init__(level_sprites, monsters_group)
         self.tile_type = tile_type
         self.image = tile_images[tile_type]
@@ -433,7 +515,10 @@ class Orc(pygame.sprite.Sprite):  # монстр
             tile_width * pos_x, tile_height * pos_y)
         self.rotation = 'right'
         self.v = 1
-        self.lifes = 5
+        if self.tile_type == 'orc':  # в зависимости от типа монстра у них разное количество жизней
+            self.lifes = 6
+        elif self.tile_type == 'imp':
+            self.lifes = 3
         self.is_died = 0
 
     def move(self, dx, dy):
@@ -447,7 +532,7 @@ class Orc(pygame.sprite.Sprite):  # монстр
                                              self.rect[2],
                                              self.rect[3])
             if pygame.sprite.spritecollideany(self, hero_group):
-                save = hero.rect
+                # если монстр достаточно близко к hero, то монстр за ним бежит
                 if self.rect[0] >= hero.rect[0] and self.rect[1] == hero.rect[1]:
                     hero.move(- tile_width / hero.v, 0)
                 elif self.rect[0] <= hero.rect[0] and self.rect[1] == hero.rect[1]:
@@ -486,15 +571,15 @@ class Orc(pygame.sprite.Sprite):  # монстр
                 if hero.count_lifes.count <= 0:
                     died_screen(screen)
 
-    def update(self):
+    def update(self):  # проверка на попадание выстрела в монстра
         for el in fire_group:
             if self.rect.colliderect(el.rect):
                 self.lifes = self.lifes - 1
                 el.kill()
-        if self.lifes == 0 and not self.is_died:
+        if self.lifes == 0 and not self.is_died:  # если монстр убит
             self.die()
 
-    def die(self):
+    def die(self):  # монстр убит, становится чб, выбрасывает около себя монетки
         need = self.tile_type + '_bw'
         self.image = tile_images[need]
         self.is_died = 1
@@ -514,13 +599,15 @@ class Coin(pygame.sprite.Sprite):  # монетки, которые получа
         self.rect = self.image.get_rect().move(randint(x, x + 3 * tile_width), randint(y, y + 3 * tile_height))
 
     def update(self):
+        # проверка на то, что монеты на таком участке уровня, откуда пользователь их может забрать
         if (pygame.sprite.spritecollideany(self, wall_group) or pygame.sprite.spritecollideany(self, box_group)
                 or pygame.sprite.spritecollideany(self, portal_group)
                 or pygame.sprite.spritecollideany(self, empty_level_group)):
             self.rect = self.image.get_rect().move(randint(self.x, self.x + 3 * tile_width),
                                                    randint(self.y, self.y + 3 * tile_height))
-        if pygame.sprite.spritecollideany(self, hero_group):
-            pygame.mixer.Channel(2).play(pygame.mixer.Sound('data/coin.mp3'))
+        if pygame.sprite.spritecollideany(self, hero_group):  # звук сбора героем монет
+            if music.play:
+                pygame.mixer.Channel(2).play(pygame.mixer.Sound('data/coin.mp3'))
             self.kill()
             hero.count_money = hero.count_money + 1
             cur.execute("""DELETE from constants""")
@@ -553,7 +640,7 @@ class UI_counter(pygame.sprite.Sprite):  # картинки подсчёта э�
             self.image = tile_images[self.name]
             self.rect = self.image.get_rect().move(x, y)
 
-    def update(self):
+    def update(self):  # изменение количества энергии или жизней игрока
         if self.tile_type == 'lifes':
             super().__init__(ui_group)
             self.name = self.tile_type + str(self.count)
@@ -585,7 +672,7 @@ class Hero(pygame.sprite.Sprite):  # главный герой
         self.count_money_from_level = 0
         self.tile_type = tile_type
 
-    def got_gun(self, type_gun):
+    def got_gun(self, type_gun):  # hero получил пистолет - у него меняется image
         hero.count_energy.count = hero.count_energy.maxi
         pict = self.tile_type + '_' + type_gun + '.png'
         hero.image = pygame.transform.scale(load_image(pict), (tile_width, tile_height))
@@ -593,7 +680,7 @@ class Hero(pygame.sprite.Sprite):  # главный герой
             hero.image = pygame.transform.flip(self.image, True, False)
         self.has_gun = 1
 
-    def action(self):
+    def action(self):  # если hero что-то забрал из ящика
         for el in box_group:
             if (abs(hero.rect[0] - el.rect[0]) <= tile_width) and (
                     abs(hero.rect[1] - el.rect[1]) <= tile_height) and not el.opened:
@@ -616,7 +703,7 @@ class Hero(pygame.sprite.Sprite):  # главный герой
                 el.potion_energy.image = pygame.transform.scale(load_image('None.png'), (tile_width, tile_height))
                 hero.count_energy.count = hero.count_energy.maxi
 
-    def move(self, dx, dy):
+    def move(self, dx, dy):  # перемещение hero
         global cat_loading_group, level_changed
         if self.cur_scene == 'home':
             self.all_right = 1
@@ -665,9 +752,10 @@ class Hero(pygame.sprite.Sprite):  # главный герой
                 cat_loading_group = pygame.sprite.Group()
                 loading()
 
-    def shoot(self):
+    def shoot(self):  # выстрел из оружия героя
         if hero.count_energy.count > 0:
-            pygame.mixer.Channel(1).play(pygame.mixer.Sound('data/shoot.mp3'))
+            if music.play:
+                pygame.mixer.Channel(1).play(pygame.mixer.Sound('data/shoot.mp3'))
             Fire(self.rect[0], self.rect[1])
             hero.count_energy.count = hero.count_energy.count - 1
 
@@ -683,10 +771,10 @@ class Fire(pygame.sprite.Sprite):  # пули персонажа
             self.x = x + hero.rect[2]
             self.y = y + self.image.get_rect()[3]
         self.rect = self.image.get_rect().move(self.x, self.y)
-        self.v_fire = 2
+        self.v_fire = 3
 
         self.to_where = [0, 0]
-        for el in monsters_group:
+        for el in monsters_group:  # пули летят к монстру в зоне доступности
             if (abs(el.rect[0] - self.rect[0]) <= (tile_width * 5)) and (
                     abs(el.rect[1] - self.rect[1]) <= (tile_width * 5)) and (not el.is_died):
                 delta_x = (self.rect[0] + self.rect[2] // 2) - (el.rect[0] + el.rect[2])
@@ -695,7 +783,7 @@ class Fire(pygame.sprite.Sprite):  # пули персонажа
         while self.to_where == [0, 0]:
             self.to_where = [randint(-1, 1), randint(-1, 1)]
 
-    def update(self):
+    def update(self):  # удаление пуль, когда они отдалены от hero
         self.rect = pygame.rect.Rect(self.rect[0] + self.v_fire * self.to_where[0],
                                      self.rect[1] + self.v_fire * self.to_where[1],
                                      self.rect[2],
@@ -707,6 +795,9 @@ class Fire(pygame.sprite.Sprite):  # пули персонажа
 
 def loading():  # картинка ожидания следующего уровня
     global level_changed
+
+    for el in coin_group:
+        el.kill()
 
     start_ticks = pygame.time.get_ticks()
 
@@ -736,6 +827,13 @@ class UI(pygame.sprite.Sprite):  # интерфейс
         super().__init__(group)
         self.image = tile_images[tile_type]
         self.rect = self.image.get_rect().move(x, y)
+        if self.tile_type == 'is_sound':
+            if music:
+                self.play = music.play
+                if not self.play:
+                    self.image = tile_images['isnt_sound']
+            else:
+                self.play = 1
 
 
 def generate_level(level):
@@ -799,11 +897,14 @@ def generate_level(level):
                 Box('potion_energy', x + dx, y + dy)
             elif level[y][x] == 'or':
                 Tile('floor', x + dx, y + dy)
-                Orc('orc', x + dx, y + dy)
+                Monster('orc', x + dx, y + dy)
+            elif level[y][x] == 'i':
+                Tile('floor', x + dx, y + dy)
+                Monster('imp', x + dx, y + dy)
 
 
 def generate_home(level, hero_type):
-    e, h, n, d = None, None, None, None
+    e, h, n, d, k = None, None, None, None, None  # персонажи домашнего экрана и герой
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == 'H':
@@ -875,7 +976,10 @@ def generate_home(level, hero_type):
             elif level[y][x] == 'E':
                 Tile('floor_home_fon', x + dx, y + dy)
                 e = Elf(x + dx, y + dy)
-    return h, n, d, e
+            elif level[y][x] == 'K':
+                Tile('floor_home_fon', x + dx, y + dy)
+                k = Knight(x + dx, y + dy)
+    return h, n, d, e, k
 
 
 if __name__ in '__main__':
@@ -906,8 +1010,14 @@ if __name__ in '__main__':
             'close': pygame.transform.scale(load_image('close.png'), (tile_width, tile_height)),
             'p': pygame.transform.scale(load_image('p.png'), (tile_width, tile_height)),
             'pkm': pygame.transform.scale(load_image('ПКМ.png'), (tile_width, tile_height)),
+
+            'is_sound': pygame.transform.scale(load_image('is_sound.png'), (tile_width, tile_height)),
+            'isnt_sound': pygame.transform.scale(load_image('isnt_sound.png'), (tile_width, tile_height)),
+
             'elf': pygame.transform.scale(load_image('elf_square.png'),
                                           (tile_width, tile_height)),
+            'knight': pygame.transform.scale(load_image('knight_m_idle_anim_f0.png'),
+                                             (tile_width, tile_height)),
             'wall_home': pygame.transform.scale(load_image('wall.png'), (tile_width, tile_height)),
             'floor_home': pygame.transform.scale(load_image('floor_home.png'), (tile_width, tile_height)),
             'floor_home_fon': pygame.transform.scale(load_image('floor_home.png'), (tile_width, tile_height)),
@@ -965,6 +1075,8 @@ if __name__ in '__main__':
 
             'orc': pygame.transform.scale(load_image('orc_warrior_idle_anim_f0.png'), (tile_width, tile_height)),
             'orc_bw': pygame.transform.scale(load_image('orc_warrior_idle_anim_f0_bw.png'), (tile_width, tile_height)),
+            'imp': pygame.transform.scale(load_image('imp_idle_anim_f0.png'), (tile_width, tile_height)),
+            'imp_bw': pygame.transform.scale(load_image('imp_idle_anim_f0_bw.png'), (tile_width, tile_height)),
             'lifes0': pygame.transform.scale(load_image('lifes0.png'), (180, 48)),
             'lifes1': pygame.transform.scale(load_image('lifes1.png'), (180, 48)),
             'lifes2': pygame.transform.scale(load_image('lifes2.png'), (180, 48)),
@@ -994,6 +1106,11 @@ if __name__ in '__main__':
             'percent': pygame.transform.scale(load_image('percent.png'), (width // 3 * 2, height // 12)),
             'count_dead': pygame.transform.scale(load_image('count_dead.png'), (tile_width, tile_height)),
             'skip': pygame.transform.scale(load_image('skip.png'), (252, 80)),
+
+            '1orange': pygame.transform.scale(load_image('1orange.png'), (200, 200)),
+            '2orange': pygame.transform.scale(load_image('2orange.png'), (200, 200)),
+            '3orange': pygame.transform.scale(load_image('3orange.png'), (200, 200)),
+            '4orange': pygame.transform.scale(load_image('4orange.png'), (200, 200)),
         }
 
         ui_start = pygame.sprite.Group()
@@ -1007,6 +1124,7 @@ if __name__ in '__main__':
         necromancer_group = pygame.sprite.Group()
         dino_group = pygame.sprite.Group()
         elf_group = pygame.sprite.Group()
+        knight_group = pygame.sprite.Group()
         guitar_group = pygame.sprite.Group()
         empty_home_group = pygame.sprite.Group()
         ui_home_group = pygame.sprite.Group()
@@ -1029,6 +1147,8 @@ if __name__ in '__main__':
 
         cat_loading_group = pygame.sprite.Group()
 
+        cat_died_group = pygame.sprite.Group()
+
         weapon = ['3gold', '3blue', '3black', '7gold', '7blue', '7black']
 
         filename = 'home.txt'
@@ -1036,20 +1156,29 @@ if __name__ in '__main__':
         home_map = load_level(filename)
         home_map = [el.split() for el in home_map]
 
-        if 'E' in ' '.join([' '.join(el) for el in home_map]) and 'N' in ' '.join([' '.join(el) for el in home_map]):
+        if 'E' in ' '.join([' '.join(el) for el in home_map]) and 'N' in ' '.join(
+                [' '.join(el) for el in home_map]) and 'K' in ' '.join([' '.join(el) for el in home_map]):
             hero_type = 'dino'
-        elif 'D' in ' '.join([' '.join(el) for el in home_map]) and 'N' in ' '.join([' '.join(el) for el in home_map]):
+        elif 'D' in ' '.join([' '.join(el) for el in home_map]) and 'N' in ' '.join(
+                [' '.join(el) for el in home_map]) and 'K' in ' '.join([' '.join(el) for el in home_map]):
             hero_type = 'elf'
-        elif 'E' in ' '.join([' '.join(el) for el in home_map]) and 'D' in ' '.join([' '.join(el) for el in home_map]):
+        elif 'E' in ' '.join([' '.join(el) for el in home_map]) and 'D' in ' '.join(
+                [' '.join(el) for el in home_map]) and 'K' in ' '.join([' '.join(el) for el in home_map]):
             hero_type = 'necromancer'
+        elif 'E' in ' '.join([' '.join(el) for el in home_map]) and 'D' in ' '.join(
+                [' '.join(el) for el in home_map]) and 'N' in ' '.join([' '.join(el) for el in home_map]):
+            hero_type = 'knight'
 
         home = 1
-        hero, necromancer, dino, elf = generate_home(home_map, hero_type)
+        hero, necromancer, dino, elf, knight = generate_home(home_map, hero_type)
         hero.cur_scene = 'home'
         close_home = UI(ui_home_group, 'close_home', width - tile_width - 50, 50)
         money = UI(ui_home_group, 'coin_fon', tile_width, tile_height)
         button_pkm = UI(ui_home_group, 'pkm', tile_width, height - tile_height * 2)
         button_p = UI(ui_home_group, 'p', 2 * tile_width + 10, height - tile_height * 2)
+
+        music = None
+        music = UI(ui_home_group, 'is_sound', 3 * tile_width + 20, height - tile_height * 2)
         home_screen(screen)
 
         running = True
@@ -1071,8 +1200,10 @@ if __name__ in '__main__':
                 necromancer_group = pygame.sprite.Group()
                 dino_group = pygame.sprite.Group()
                 elf_group = pygame.sprite.Group()
+                knight_group = pygame.sprite.Group()
                 guitar_group = pygame.sprite.Group()
                 empty_home_group = pygame.sprite.Group()
+                ui_home_group = pygame.sprite.Group()
                 ui_home_group = pygame.sprite.Group()
 
                 hero_group = pygame.sprite.Group()
@@ -1080,12 +1211,13 @@ if __name__ in '__main__':
                 filename = 'home.txt'
                 home_map = load_level(filename)
                 home_map = [el.split() for el in home_map]
-                hero, necromancer, dino, elf = generate_home(home_map, hero_type)
+                hero, necromancer, dino, elf, knight = generate_home(home_map, hero_type)
                 hero.cur_scene = 'home'
                 close_home = UI(ui_home_group, 'close_home', width - tile_width - 50, 50)
                 money = UI(ui_home_group, 'coin_fon', tile_width, tile_height)
                 button_pkm = UI(ui_home_group, 'pkm', tile_width, height - tile_height * 2)
                 button_p = UI(ui_home_group, 'p', 2 * tile_width + 10, height - tile_height * 2)
+                music = UI(ui_home_group, 'is_sound', 3 * tile_width + 20, height - tile_height * 2)
                 home_screen(screen)
 
             else:  # сцена уровня
@@ -1119,6 +1251,7 @@ if __name__ in '__main__':
                     button_pkm = UI(ui_group, 'pkm', tile_width, height - tile_height * 2)
                     button_p = UI(ui_group, 'p', 2 * tile_width + 10, height - tile_height * 2)
                     close = UI(ui_group, 'close', width - tile_width - 50, 50)
+                    music = UI(ui_group, 'is_sound', 3 * tile_width + 20, height - tile_height * 2)
 
                     level_changed = 0
                 clock.tick(fps)
@@ -1154,6 +1287,14 @@ if __name__ in '__main__':
                         for el in clicked_sprites:
                             if el.tile_type == 'close':
                                 terminate()
+                            if el.tile_type == 'is_sound':
+                                el.play = (el.play + 1) % 2
+                                if el.play:
+                                    el.image = tile_images['is_sound']
+                                    pygame.mixer.Channel(0).unpause()
+                                else:
+                                    el.image = tile_images['isnt_sound']
+                                    pygame.mixer.Channel(0).pause()
                         if hero.has_gun and event.button == 3:  # выстрел игрока из оружия
                             hero.shoot()
                     if event.type == pygame.KEYDOWN:  # взять предмет из ящика
